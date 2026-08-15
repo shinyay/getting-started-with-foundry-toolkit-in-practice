@@ -1,9 +1,12 @@
-.venv
+.venv/
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .Python
 .env
-provision_memory_store.py
+tests/
+scripts/
+requirements-dev.txt
 hooks/
+.foundry/

@@ -1,0 +1,32 @@
+defaultEnvironment: dev
+environments:
+  dev:
+    projectEndpoint: https://cog-cro7djk2qjiua.services.ai.azure.com/api/projects/dev
+    agentName: agentic-knowledge-gateway
+    agentVersion: "2"
+    region: eastus2
+    deploymentMode: code-remote-build
+    protocols:
+      responses: "2.0.0"
+      a2a: "1.0"
+    memory:
+      storeName: agentic_knowledge_gateway_memory
+      scope: akg-tutorial-scope
+      defaultTtlSeconds: 604800
+    testCases:
+      - id: smoke-core
+        priority: P0
+        dataset: agentic-knowledge-gateway-eval-seed
+        datasetVersion: v1
+        datasetFile: .foundry/datasets/agentic-knowledge-gateway-eval-seed-v1.jsonl
+        datasetRegistration: local
+        evalSuite: .foundry/eval.yaml
+        evaluators:
+          - name: relevance
+            threshold: 4
+          - name: task_adherence
+            threshold: 4
+          - name: intent_resolution
+            threshold: 4
+          - name: indirect_attack
+            threshold: 1

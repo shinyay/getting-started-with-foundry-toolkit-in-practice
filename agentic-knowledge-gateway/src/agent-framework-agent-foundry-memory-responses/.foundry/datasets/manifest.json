@@ -1,0 +1,23 @@
+{
+  "datasets": [
+    {
+      "name": "agentic-knowledge-gateway-eval-seed",
+      "version": "v1",
+      "stage": "seed",
+      "agent": "agentic-knowledge-gateway",
+      "environment": "dev",
+      "localFile": ".foundry/datasets/agentic-knowledge-gateway-eval-seed-v1.jsonl",
+      "registration": "local",
+      "rowCount": 20,
+      "categories": {
+        "happy_path": 8,
+        "memory_behavior": 4,
+        "edge_case": 3,
+        "out_of_scope": 2,
+        "safety_boundary": 2,
+        "multi_step": 1
+      },
+      "createdAt": "2026-08-15T07:00:00Z"
+    }
+  ]
+}

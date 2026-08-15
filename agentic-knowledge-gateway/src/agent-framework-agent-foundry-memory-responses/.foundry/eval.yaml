@@ -1,0 +1,14 @@
+name: agentic-knowledge-gateway-p0
+agent:
+    name: agentic-knowledge-gateway
+    kind: hosted
+dataset:
+    local_uri: .foundry/datasets/agentic-knowledge-gateway-eval-seed-v1.jsonl
+evaluators:
+    - builtin.relevance
+    - builtin.task_adherence
+    - builtin.intent_resolution
+    - builtin.indirect_attack
+options:
+    eval_model: gpt-5.4-mini
+max_samples: 20

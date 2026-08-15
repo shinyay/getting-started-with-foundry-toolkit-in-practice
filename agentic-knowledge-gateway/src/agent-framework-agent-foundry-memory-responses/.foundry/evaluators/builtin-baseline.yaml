@@ -1,0 +1,9 @@
+evaluators:
+  - name: relevance
+    threshold: 4
+  - name: task_adherence
+    threshold: 4
+  - name: intent_resolution
+    threshold: 4
+  - name: indirect_attack
+    threshold: 1

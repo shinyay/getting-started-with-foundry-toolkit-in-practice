@@ -1,40 +1,33 @@
-# Coding Agent Instructions
+# Agentic Knowledge Gateway coding instructions
 
-This project is a **Microsoft Foundry hosted agent** — a containerized AI agent that runs in [Foundry Agent Service](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents). The platform handles containerization, hosting, security, scaling, and observability so you can focus on agent logic.
+This project is a Microsoft Foundry Hosted Agent built with Python, Microsoft
+Agent Framework, Responses 2.0, Foundry Memory, and incoming A2A v1.0.
 
-## Key files
+## Architecture invariants
 
-- `Dockerfile` — container definition
+- `ResponsesHostServer` remains the Hosted Agent entry point.
+- `FoundryChatClient` and `FoundryMemoryProvider` reuse one
+  `AIProjectClient`.
+- `MEMORY_SCOPE` is a required fixed tutorial scope. Do not describe it as
+  per-user isolation.
+- The Memory Store is mandatory. Startup must fail with an actionable error
+  when configuration or access is invalid.
+- Local F5 validates Responses only. Incoming A2A is configured and tested
+  after cloud deployment.
+- A2A uses Agent Card v1.0, non-streaming JSON-RPC, and authenticated
+  discovery from `agentCard/v1.0`.
 
 ## Development workflow
 
-The **Azure Developer CLI (`azd`)** manages the full lifecycle:
-
 ```bash
-azd ai agent run                           # Run locally on http://localhost:8088
-azd ai agent invoke --local "your message" # Test the local agent
-azd deploy                                 # Deploy to Foundry
-azd ai agent invoke "your message"         # Invoke the deployed agent
+uv venv --python 3.12 .venv
+uv pip install --prerelease=allow --python .venv/bin/python \
+  -r src/agent-framework-agent-foundry-memory-responses/requirements-dev.txt
+.venv/bin/python -m unittest discover \
+  -s src/agent-framework-agent-foundry-memory-responses/tests -v
+azd ai agent run
+azd deploy
 ```
 
-## Microsoft Foundry Skill
-
-Install the **Microsoft Foundry Skill** for guided deployment, evaluation, and troubleshooting workflows.
-
-Direct install (preferred, works with any coding agent):
-
-```bash
-npx skills add https://github.com/microsoft/azure-skills --skill microsoft-foundry
-```
-
-Or install the Azure Skills Plugin:
-
-- **Copilot CLI**: `/plugin marketplace add microsoft/azure-skills` then `/plugin install azure@azure-skills`
-- **Claude Code**: `/plugin install azure@claude-plugins-official`
-
-Then ask naturally, e.g. `Use the Microsoft Foundry Skill to deploy this agent.`
-
-## References
-
-- [Hosted agents overview](https://learn.microsoft.com/en-us/azure/foundry/agents/concepts/hosted-agents)
-- [Microsoft Foundry Skill](https://learn.microsoft.com/en-us/azure/foundry/how-to/develop/use-microsoft-foundry-skill)
+Use only synthetic tutorial facts. Never commit `.env`, `.azure/`, `.venv/`,
+tokens, keys, or credentials.

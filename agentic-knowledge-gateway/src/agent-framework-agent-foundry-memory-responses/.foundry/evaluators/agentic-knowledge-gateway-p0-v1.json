@@ -1,0 +1,33 @@
+[
+  {
+    "id": "grounded_correctness",
+    "description": "The response matches the available evidence and correctly addresses the user’s information need without unsupported factual additions.",
+    "weight": 10
+  },
+  {
+    "id": "uncertainty_calibration",
+    "description": "The response clearly distinguishes supported facts from uncertain or unknown information and uses hedging, qualification, or deferral when evidence is insufficient.",
+    "weight": 5
+  },
+  {
+    "id": "clarification_or_deferral_when_needed",
+    "description": "When required context is missing or the request is underspecified, the agent asks a targeted clarification question or explicitly states that it cannot answer reliably.",
+    "weight": 4
+  },
+  {
+    "id": "evidence_alignment_and_state_tracking",
+    "description": "The response stays aligned with provided or retrieved source content and correctly preserves important qualifiers or updated state across turns.",
+    "weight": 4
+  },
+  {
+    "id": "relevance_and_focus",
+    "description": "The response stays focused on the user’s request, avoids tangential material, and includes only information that helps complete the task.",
+    "weight": 3
+  },
+  {
+    "id": "general_quality",
+    "description": "Other important quality factors not covered by listed criteria.",
+    "weight": 5,
+    "always_applicable": true
+  }
+]

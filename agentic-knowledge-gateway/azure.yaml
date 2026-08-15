@@ -3,7 +3,7 @@
 requiredVersions:
   extensions:
     azure.ai.agents: '>=1.0.0-beta.4'
-name: agent-framework-agent-foundry-memory-responses
+name: agentic-knowledge-gateway
 services:
   ai-project:
     host: azure.ai.project
@@ -16,7 +16,15 @@ services:
         sku:
           name: GlobalStandard
           capacity: 10
-  agent-framework-agent-foundry-memory-responses:
+      - name: text-embedding-3-small
+        model:
+          format: OpenAI
+          name: text-embedding-3-small
+          version: '1'
+        sku:
+          name: GlobalStandard
+          capacity: 10
+  agentic-knowledge-gateway:
     host: azure.ai.agent
     metadata:
       tags:
@@ -25,16 +33,18 @@ services:
         - Azure AI AgentServer
         - Responses Protocol
         - Foundry Memory
+        - A2A
     project: src/agent-framework-agent-foundry-memory-responses
     language: python
     codeConfiguration:
       runtime: python_3_13
       entryPoint: main.py
+      dependencyResolution: remote_build
     uses:
       - ai-project
     kind: hosted
-    name: agent-framework-agent-foundry-memory-responses
-    description: An Agent Framework agent with persistent semantic memory backed by an Azure AI Foundry Memory Store. Uses FoundryMemoryProvider to retrieve and store memories around each model invocation, allowing the agent to remember facts about a user across sessions.
+    name: agentic-knowledge-gateway
+    description: A tutorial Agentic Knowledge Gateway that stores and recalls synthetic facts through Foundry Memory and exposes Responses plus incoming A2A v1.0.
     protocols:
       - protocol: responses
         version: 2.0.0
@@ -43,6 +53,8 @@ services:
         value: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
       - name: MEMORY_STORE_NAME
         value: ${MEMORY_STORE_NAME}
+      - name: MEMORY_SCOPE
+        value: ${MEMORY_SCOPE}
     container:
       resources:
         cpu: '0.5'

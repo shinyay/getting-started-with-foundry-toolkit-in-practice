@@ -1,1 +1,9 @@
-.azure
+.azure/
+.venv/
+**/.env
+**/__pycache__/
+*.py[cod]
+.coverage
+htmlcov/
+**/.foundry/results/*
+!**/.foundry/results/.gitkeep

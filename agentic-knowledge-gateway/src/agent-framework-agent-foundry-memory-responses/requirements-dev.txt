@@ -1,0 +1,4 @@
+-r requirements.txt
+
+a2a-sdk==1.0.2
+httpx==0.28.1
