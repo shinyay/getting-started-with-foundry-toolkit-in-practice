@@ -30,8 +30,8 @@ By the end of the tutorial, you will be able to:
 - use GitHub Copilot with explicit architecture and security boundaries;
 - provision a Foundry Project, chat model, embedding model, and Memory Store;
 - connect `FoundryChatClient` and `FoundryMemoryProvider`;
-- verify the current write through the Memory API with a unique composite proof
-  code instead of trusting agent prose or stale shared data;
+- verify the current write through the Memory API with an independently random
+  opaque key/value pair instead of trusting agent prose or stale shared data;
 - debug the Responses endpoint locally in Agent Inspector;
 - deploy source code to the Foundry-managed Python 3.13 runtime;
 - assign the identities required for model, Memory, and Hosted Agent access;
@@ -48,8 +48,8 @@ backend.
 
 | It demonstrates | It does not demonstrate |
 |---|---|
-| Semantic storage of synthetic preferences and project facts | A general document database or source-of-truth system |
-| Recall across separate Responses and A2A tasks | Per-user authorization or tenant isolation |
+| Semantic storage of synthetic preferences, project facts, and proof values | A general document database or source-of-truth system |
+| Unambiguous key-only recall across separate Responses and A2A tasks | Per-user authorization or tenant isolation |
 | A shared seven-day tutorial scope | Production retention, privacy, or compliance controls |
 | Incoming A2A access to one Hosted Gateway | A second Hosted caller agent or OBO propagation |
 | Direct Foundry Memory integration | MCP, Foundry IQ, Azure AI Search, SQL, Cosmos DB, or graph databases |
@@ -81,6 +81,8 @@ flowchart LR
     F --> G[gpt-5.4-mini]
     E --> H[FoundryMemoryProvider]
     H --> I[Foundry Memory Store]
+    E --> L[Exact synthetic association tool]
+    L -->|Memory item API| I
     I --> J[text-embedding-3-small]
     I -. fixed shared scope .-> K[akg-tutorial-scope]
 ```
@@ -94,6 +96,7 @@ The boundaries are important:
 | **Agent Framework** | Composes the agent, model client, context provider, and response behavior. |
 | **ResponsesHostServer** | Exposes the Hosted Agent's Responses 2.0 application contract on port `8088`. |
 | **FoundryMemoryProvider** | Searches Memory before model execution and submits interaction updates afterward. |
+| **Exact synthetic association tool** | Validates opaque tutorial key/value input and writes one authoritative Memory item for deterministic proof. |
 | **Foundry Memory Store** | Extracts, embeds, stores, expires, and searches semantic memory items. |
 | **Foundry incoming A2A** | Adapts authenticated A2A requests to the Hosted Agent endpoint after deployment. |
 | **Local A2A client** | Verifies authenticated Agent Card discovery and non-streaming A2A JSON-RPC interoperability. |
@@ -274,6 +277,8 @@ Refactor the generated sample without changing its Hosted Agent contract.
 - compose FoundryChatClient, FoundryMemoryProvider, Agent, and
   ResponsesHostServer in gateway/app.py;
 - reuse client.project_client for the Memory provider;
+- add a strict Agent tool that accepts only tutorial-generated opaque key/value
+  input and writes one exact user-profile Memory item;
 - set allow_preview=True, update_delay=0, and store=False;
 - perform a real embedding-backed Memory search before server startup;
 - keep main.py responsible only for dotenv loading, settings, and asyncio.run;
@@ -290,16 +295,18 @@ Add explicit developer scripts outside the Hosted runtime dependency set.
 
 - provision_memory_store.py: idempotent create, read-back, seven-day TTL,
   drift detection, and embedding-backed access check;
-- memory_proof.py: create a unique synthetic marker and a composite preference
-  code for each proof run;
-- verify_memory.py: poll the Memory API and require one item containing the
-  current composite code;
+- memory_proof.py: create independent opaque key/value values for each proof;
+- memory_polling.py: retry only bounded transient service failures;
+- verify_memory.py: require one item containing the exact current pair and
+  support a pre-write absence check;
 - cleanup_memory.py: delete a scope or store only after explicit confirmation;
 - configure_a2a.py: preserve Responses and add incoming A2A using
   protocol_configuration, Agent Card version 1.0, and v1.0 card verification;
 - a2a_client.py: authenticate with DefaultAzureCredential, fetch
   agentCard/v1.0, require a JSONRPC v1.0 supportedInterface, send a
   non-streaming request, verify Memory directly, then perform fresh-task recall;
+- sync_agent_metadata.py: generate ignored environment metadata from resolved
+  azd JSON without committing an account endpoint;
 - put a2a-sdk and test-only packages in requirements-dev.txt;
 - add VS Code tasks and focused unit tests.
 
@@ -318,6 +325,9 @@ Reject a diff that:
 - removes Responses while adding A2A;
 - uses an A2A v0.3-only Agent Card check;
 - trusts model prose as proof of persistence;
+- relies on semantic extraction to preserve an opaque proof pair verbatim;
+- includes the expected opaque value in a recall query;
+- commits generated environment-specific agent metadata;
 - automatically deletes or recreates an incompatible Memory Store; or
 - puts A2A development dependencies in the Hosted runtime requirements.
 
@@ -338,7 +348,7 @@ agentic-knowledge-gateway/
 └── src/
     └── agent-framework-agent-foundry-memory-responses/
         ├── .foundry/
-        │   ├── agent-metadata.yaml
+        │   ├── agent-metadata.example.yaml
         │   ├── eval.yaml
         │   ├── datasets/
         │   ├── evaluators/
@@ -347,13 +357,17 @@ agentic-knowledge-gateway/
         │   ├── a2a_config.py
         │   ├── app.py
         │   ├── memory_config.py
+        │   ├── memory_proof.py
+        │   ├── memory_tools.py
         │   └── settings.py
         ├── scripts/
         │   ├── a2a_client.py
         │   ├── cleanup_memory.py
         │   ├── configure_a2a.py
+        │   ├── memory_polling.py
         │   ├── memory_proof.py
         │   ├── provision_memory_store.py
+        │   ├── sync_agent_metadata.py
         │   └── verify_memory.py
         ├── tests/
         ├── .env.example
@@ -367,14 +381,18 @@ agentic-knowledge-gateway/
 | `azure.yaml` | Declares Project/model provisioning and Code/Remote Hosted Agent deployment. |
 | `gateway/settings.py` | Validates required environment values and rejects unresolved placeholders. |
 | `gateway/memory_config.py` | Defines the seven-day store, safe data instructions, typed search inputs, and drift comparison. |
-| `gateway/app.py` | Performs the Memory health check and composes the Agent Framework runtime. |
+| `gateway/memory_proof.py` | Defines the runtime-safe opaque proof contract shared by the Agent tool and developer scripts. |
+| `gateway/memory_tools.py` | Validates and writes exact synthetic associations through the Memory item API. |
+| `gateway/app.py` | Performs the Memory health check and composes the Agent Framework runtime, provider, and write-through tool. |
 | `gateway/a2a_config.py` | Builds Responses + A2A endpoint configuration, Agent Card metadata, URLs, and v1 interface checks. |
 | `scripts/provision_memory_store.py` | Creates or verifies the store without destructive replacement. |
-| `scripts/memory_proof.py` | Creates a unique marker and binds it to the preference in one composite proof code. |
-| `scripts/verify_memory.py` | Proves one Memory item contains the current composite code through the authoritative API. |
+| `scripts/memory_proof.py` | Creates an independently random opaque key/value pair for one proof run. |
+| `scripts/memory_polling.py` | Applies bounded retries only to known transient Memory service failures. |
+| `scripts/verify_memory.py` | Proves one Memory item contains the exact pair and supports a negative pre-write check. |
 | `scripts/configure_a2a.py` | Enables incoming A2A after deployment and verifies the served card. |
 | `scripts/a2a_client.py` | Runs authenticated A2A remember, direct Memory verification, and recall. |
-| `.foundry/` | Holds environment metadata and an optional P0 evaluation starter. |
+| `scripts/sync_agent_metadata.py` | Generates ignored local metadata from the selected `azd` environment. |
+| `.foundry/` | Holds a metadata example and an optional P0 evaluation starter. |
 
 The runtime dependencies intentionally exclude `a2a-sdk`, test code, scripts,
 and `.foundry` assets. `.azdignore` keeps them out of the Hosted code package.
@@ -412,7 +430,8 @@ In VS Code:
 ## 5. Configure and Provision Microsoft Foundry
 
 The manifest creates a new East US 2 Project and declares both model
-deployments. Change the region or models only after checking current support,
+deployments. Deployment resource names come from the `azd` values below.
+Change the region or model family/version only after checking current support,
 capacity, and quota.
 
 Create or select the `azd` environment:
@@ -438,6 +457,12 @@ azd env set MEMORY_STORE_NAME "agentic_knowledge_gateway_memory"
 azd env set MEMORY_SCOPE "akg-tutorial-scope"
 azd env set FOUNDRY_HOSTED_AGENT_NAME "agentic-knowledge-gateway"
 ```
+
+`AZURE_AI_MODEL_DEPLOYMENT_NAME` and
+`AZURE_AI_EMBEDDING_MODEL_DEPLOYMENT_NAME` control deployment resource names
+and runtime references. To change the actual catalog model family or version,
+edit the corresponding `model.name` and `model.version` in `azure.yaml` as a
+separate reviewed change.
 
 Provision the Project and model deployments:
 
@@ -568,6 +593,17 @@ It disables:
 The store instructions reject credentials, secrets, financial data, health
 data, legal data, precise locations, and other sensitive information.
 
+The Gateway uses two complementary Memory paths:
+
+- `FoundryMemoryProvider` performs semantic retrieval and automatic interaction
+  updates for ordinary synthetic preferences and project facts; and
+- `remember_synthetic_association` handles only the strict `akg...=akv...`
+  tutorial proof shape and writes it through the Memory item API.
+
+The second path is necessary because semantic extraction can legitimately
+summarize or generalize conversation text. A byte-like opaque value must not
+depend on that lossy behavior when it is used as verification evidence.
+
 The script is safe to rerun:
 
 - a matching store is read and verified;
@@ -606,42 +642,53 @@ Readiness is exposed at:
 curl http://localhost:8088/readiness
 ```
 
-### Store a uniquely marked synthetic preference
+### Create an opaque proof and verify it is absent
 
-In another terminal, from `agentic-knowledge-gateway`, create a marker for this
-run and include it in the remembered fact:
+In another terminal, start from `agentic-knowledge-gateway`. Generate a random
+key and an independently random value:
 
 ```bash
-MARKER="$(
-  .venv/bin/python -c 'import uuid; print("akg" + uuid.uuid4().hex[:16])'
-)"
-printf 'Verification marker: %s\n' "$MARKER"
+cd src/agent-framework-agent-foundry-memory-responses
+read KEY VALUE < <(
+  ../../.venv/bin/python -c \
+    'from scripts.memory_proof import create_proof; p = create_proof(); print(p.key, p.value)'
+)
+printf 'Verification key: %s\nExpected value: %s\n' "$KEY" "$VALUE"
 
+../../.venv/bin/python -m scripts.verify_memory \
+  --key "$KEY" \
+  --value "$VALUE" \
+  --expect-absent \
+  --timeout 60
+```
+
+Keep using this terminal so `KEY` and `VALUE` remain available. The absence
+check is a negative control for this exact pair.
+
+### Store and verify the exact pair
+
+```bash
+cd ../..
 azd ai agent invoke \
   --local \
   --new-session \
   --new-conversation \
-  "Remember this exact synthetic tutorial formatting preference code: ${MARKER}-concise-bullets. Preserve the full code exactly. It means I prefer concise answers in bullet points."
-```
+  "Remember this exact synthetic tutorial key/value association as one fact: ${KEY}=${VALUE}. Preserve the complete pair exactly."
 
-Keep using the same terminal so `MARKER` remains available. Agent
-acknowledgement is not proof of persistence.
-
-### Verify the Memory API directly
-
-```bash
 cd src/agent-framework-agent-foundry-memory-responses
 ../../.venv/bin/python -m scripts.verify_memory \
-  --marker "$MARKER" \
+  --key "$KEY" \
+  --value "$VALUE" \
   --timeout 300
 ```
 
-Foundry can normalize ordinary prose into separate Memory items. To prevent an
-older shared-scope preference from satisfying the current run, the proof binds
-the marker and meaning into one exact value such as
-`akg0123456789abcdef-concise-bullets`. The verifier requires that full value in
-one returned Memory item; it never combines a marker-only item with stale
-`concise` or `bullet` items.
+Agent acknowledgement is not proof of persistence. The direct verifier requires
+the exact `key=value` pair in one item returned by the authoritative Memory item
+list API. It never combines unrelated items or depends on semantic search
+ranking. The Agent's strict write-through tool validates the synthetic formats
+before creating that item. Known transient transport, RBAC-propagation,
+throttling, and service errors retry only within the supplied timeout; a final
+failure remains visible with its cause.
 
 ### Recall in independent Responses state
 
@@ -651,16 +698,18 @@ azd ai agent invoke \
   --local \
   --new-session \
   --new-conversation \
-  "What does the synthetic tutorial formatting preference code ${MARKER}-concise-bullets mean? Include the full code exactly in your answer."
+  "What exact synthetic tutorial value is associated with key ${KEY}? Return the value exactly."
 ```
 
 Expected meaning:
 
 ```text
-- Code: akg0123456789abcdef-concise-bullets
-- Use bullet points.
-- Keep answers concise.
+akvfedcba9876543210
 ```
+
+The query contains only the key. Because the value was generated independently
+and is absent from the query, returning it after both resets is evidence of
+Memory-backed retrieval rather than inference or ordinary conversation history.
 
 Stop the debugger with `Shift+F5` before deployment.
 
@@ -682,6 +731,9 @@ The manifest uses:
 - `0.5` CPU and `1Gi` memory; and
 - the same model, store name, and fixed scope used locally.
 
+The optional Dockerfile also uses Python 3.13 so it matches the Hosted runtime.
+The workspace virtual environment remains on Python 3.12 for local development.
+
 Wait for the version to become active:
 
 ```bash
@@ -694,6 +746,20 @@ Confirm:
 - the intended version is selected;
 - `protocol_versions` contains Responses `2.0.0`; and
 - `instance_identity.principal_id` is present.
+
+Generate ignored local metadata for this exact deployment:
+
+```bash
+cd src/agent-framework-agent-foundry-memory-responses
+../../.venv/bin/python -m scripts.sync_agent_metadata --environment dev
+../../.venv/bin/python -m scripts.sync_agent_metadata \
+  --environment dev \
+  --check
+cd ../..
+```
+
+Review the values and type `WRITE` at the first command. The tracked
+`agent-metadata.example.yaml` remains environment-neutral.
 
 ### Grant the Hosted Agent instance identity
 
@@ -745,20 +811,31 @@ cd src/agent-framework-agent-foundry-memory-responses
 ../../.venv/bin/python -m scripts.cleanup_memory --scope
 ```
 
-Type `DELETE` when prompted. Return to the project root, create a fresh marker,
-and store a preference:
+Type `DELETE` when prompted. Generate a fresh opaque key/value pair and prove it
+is absent:
+
+```bash
+read KEY VALUE < <(
+  ../../.venv/bin/python -c \
+    'from scripts.memory_proof import create_proof; p = create_proof(); print(p.key, p.value)'
+)
+printf 'Verification key: %s\nExpected value: %s\n' "$KEY" "$VALUE"
+
+../../.venv/bin/python -m scripts.verify_memory \
+  --key "$KEY" \
+  --value "$VALUE" \
+  --expect-absent \
+  --timeout 60
+```
+
+Return to the project root and store the pair:
 
 ```bash
 cd ../..
-MARKER="$(
-  .venv/bin/python -c 'import uuid; print("akg" + uuid.uuid4().hex[:16])'
-)"
-printf 'Verification marker: %s\n' "$MARKER"
-
 azd ai agent invoke \
   --new-session \
   --new-conversation \
-  "Remember this exact synthetic tutorial formatting preference code: ${MARKER}-concise-bullets. Preserve the full code exactly. It means I prefer concise answers in bullet points."
+  "Remember this exact synthetic tutorial key/value association as one fact: ${KEY}=${VALUE}. Preserve the complete pair exactly."
 ```
 
 Verify the service state:
@@ -766,7 +843,8 @@ Verify the service state:
 ```bash
 cd src/agent-framework-agent-foundry-memory-responses
 ../../.venv/bin/python -m scripts.verify_memory \
-  --marker "$MARKER" \
+  --key "$KEY" \
+  --value "$VALUE" \
   --timeout 300
 ```
 
@@ -777,12 +855,13 @@ cd ../..
 azd ai agent invoke \
   --new-session \
   --new-conversation \
-  "What does the synthetic tutorial formatting preference code ${MARKER}-concise-bullets mean? Include the full code exactly in your answer."
+  "What exact synthetic tutorial value is associated with key ${KEY}? Return the value exactly."
 ```
 
 Using both flags matters. `--new-session` resets sticky compute state;
 `--new-conversation` discards Responses history. Recall after both resets is
-evidence of Memory-backed context rather than ordinary conversation history.
+evidence of Memory-backed context because the independent value is not present
+in the query.
 
 ## 11. Enable and Verify Incoming A2A v1.0
 
@@ -827,6 +906,7 @@ You should see both `responses` and `a2a`.
 cd src/agent-framework-agent-foundry-memory-responses
 ../../.venv/bin/python -m scripts.cleanup_memory --scope
 ../../.venv/bin/python -m scripts.a2a_client
+cd ../..
 ```
 
 The client:
@@ -834,23 +914,24 @@ The client:
 1. authenticates with `DefaultAzureCredential`;
 2. retrieves `agentCard/v1.0`;
 3. verifies a v1.0 JSON-RPC interface;
-4. creates a unique synthetic run marker and derives a composite code such as
-   `akg0123456789abcdef-concise-bullets`;
-5. sends the coded preference through A2A;
-6. requires one Foundry Memory item containing that exact composite code;
-7. creates a new A2A message/task without prior task context;
-8. asks for the meaning of the same composite code; and
-9. requires the same composite code in the returned text.
+4. creates an opaque key and an independently random value;
+5. confirms the exact pair is absent from the Memory item list;
+6. sends the exact pair through A2A so the Gateway invokes its strict
+   write-through tool;
+7. requires one authoritative Foundry Memory item containing that pair;
+8. creates a new A2A message/task without prior task context;
+9. asks for the value using only the key; and
+10. requires the independent value in the returned text.
 
 Expected output shape:
 
 ```text
-Verification marker: akg0123456789abcdef
-- Remembered: akg0123456789abcdef-concise-bullets
-Verified this run's synthetic fact in Foundry Memory.
-- Code: akg0123456789abcdef-concise-bullets
-- Use bullet points.
-- Keep responses concise.
+Verification key: akg0123456789abcdef
+Expected value: akvfedcba9876543210
+Verified the generated key/value pair is absent.
+Remembered: akg0123456789abcdef=akvfedcba9876543210
+Verified this run's exact pair in one Foundry Memory item.
+akvfedcba9876543210
 ```
 
 The test proves authenticated A2A interoperability for one developer identity.
@@ -864,10 +945,11 @@ It does not prove OBO propagation or two-user Memory isolation.
 
 ## 12. Optional P0 Evaluation Starter
 
-The service source keeps Foundry workflow state under `.foundry/`:
+The service source keeps environment-neutral Foundry workflow assets under
+`.foundry/`:
 
-- `agent-metadata.yaml` records the selected Project, Agent, protocols, Memory
-  settings, and test case;
+- `agent-metadata.example.yaml` contains placeholders plus reusable protocols,
+  Memory settings, and test cases;
 - `datasets/agentic-knowledge-gateway-eval-seed-v1.jsonl` contains 20
   synthetic, stateless capability and safety prompts;
 - `evaluators/builtin-baseline.yaml` records the intended built-in baseline;
@@ -877,8 +959,26 @@ The service source keeps Foundry workflow state under `.foundry/`:
 
 Every dataset row contains both `query` and concrete `expected_behavior`.
 
+If you skipped metadata generation in the deployment step, generate it before
+using later Foundry workflows:
+
+```bash
+cd src/agent-framework-agent-foundry-memory-responses
+../../.venv/bin/python -m scripts.sync_agent_metadata --environment dev
+```
+
+Review the displayed Project, Agent version, region, store, and scope, then type
+`WRITE`. The generated `.foundry/agent-metadata.yaml` is ignored by Git. Confirm
+that it still matches the selected `azd` environment:
+
+```bash
+../../.venv/bin/python -m scripts.sync_agent_metadata \
+  --environment dev \
+  --check
+```
+
 Evaluation execution is intentionally outside the core tutorial. When you are
-ready:
+ready, and only after metadata sync:
 
 ```bash
 azd ai agent eval run
@@ -895,8 +995,10 @@ datasets are advanced follow-ups.
 | `uv` refuses to resolve dependencies | Preview Agent Server packages are required | Install with `uv pip install --prerelease=allow ...`. |
 | Settings report an unresolved `${VAR}` or `{{VAR}}` | A deployment placeholder was copied literally | Set the real value in `.env` or `azd env`; do not suppress validation. |
 | Memory Store creation succeeds but writes fail with nested embedding `401` | Managed Foundry identity lacks model access or RBAC has not propagated | Assign Foundry User and Cognitive Services OpenAI User to the Project/account identities at the documented scopes; wait and rerun the embedding-backed check. |
-| The agent responds but Memory stays empty | `FoundryMemoryProvider` treats update failures as non-critical | Inspect Hosted logs and run `scripts.verify_memory --marker "$MARKER"`; never treat acknowledgement prose as persistence proof. |
-| `verify_memory` times out while older preferences are visible | The current write did not preserve its composite proof code, or the wrong marker was supplied | Use the marker printed before the current remember request. The exact `<marker>-concise-bullets` value must occur in one Memory item; stale items are never combined to pass. |
+| The agent responds but Memory stays empty | `FoundryMemoryProvider` treats semantic update failures as non-critical, or the exact-association tool failed | Inspect Hosted logs and run `scripts.verify_memory --key "$KEY" --value "$VALUE"`; never treat acknowledgement prose as persistence proof. |
+| `verify_memory` times out | The exact current pair was not stored, or transient RBAC/service failures did not recover within the budget | Confirm the same key and value are used. The full `key=value` pair must occur in one item; the final timeout retains the last transient error as its cause. |
+| Fresh recall returns a plausible answer but not the expected value | The response came from inference or unrelated state rather than this proof | Require the independently generated `akv...` value. Do not include that value in the recall query. |
+| `azd ai agent eval run` targets the wrong Project or version | Local metadata is missing or stale | Run `scripts.sync_agent_metadata --environment dev`, then rerun it with `--check`. Generated metadata is intentionally ignored. |
 | Local server returns 404 for `/health` | The Agent Server readiness route is different | Use `/readiness`. |
 | F5 uses `/usr/bin/python3` | VS Code selected the system interpreter | Select `agentic-knowledge-gateway/.venv/bin/python`. |
 | Hosted invocation returns 403 | Instance identity lacks minimum runtime access | Assign Cognitive Services User at account scope and the Project/model roles shown above. |

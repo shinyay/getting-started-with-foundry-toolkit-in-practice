@@ -8,6 +8,8 @@ Agent Framework, Responses 2.0, Foundry Memory, and incoming A2A v1.0.
 - `ResponsesHostServer` remains the Hosted Agent entry point.
 - `FoundryChatClient` and `FoundryMemoryProvider` reuse one
   `AIProjectClient`.
+- Exact opaque tutorial associations are written through the strict
+  `remember_synthetic_association` Agent tool, not semantic extraction alone.
 - `MEMORY_SCOPE` is a required fixed tutorial scope. Do not describe it as
   per-user isolation.
 - The Memory Store is mandatory. Startup must fail with an actionable error
@@ -23,8 +25,9 @@ Agent Framework, Responses 2.0, Foundry Memory, and incoming A2A v1.0.
 uv venv --python 3.12 .venv
 uv pip install --prerelease=allow --python .venv/bin/python \
   -r src/agent-framework-agent-foundry-memory-responses/requirements-dev.txt
-.venv/bin/python -m unittest discover \
-  -s src/agent-framework-agent-foundry-memory-responses/tests -v
+cd src/agent-framework-agent-foundry-memory-responses
+../../.venv/bin/python -m unittest discover -s tests -v
+cd ../..
 azd ai agent run
 azd deploy
 ```

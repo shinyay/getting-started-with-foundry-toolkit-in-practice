@@ -22,6 +22,17 @@ applyTo: "agentic-knowledge-gateway/**"
   array or default to A2A v0.3.
 - Surface configuration and Memory access failures. Do not silently continue
   without the requested capability.
+- Memory verification uses independently random opaque key/value values. Keep
+  the value out of recall queries and require the exact pair in one Memory item.
+- Use the validation-gated Agent tool and Memory item API for exact opaque
+  writes. Keep `FoundryMemoryProvider` for semantic retrieval and ordinary
+  interaction updates; semantic extraction alone is not verbatim proof.
+- Retry only explicitly classified transient Memory service failures within a
+  bounded deadline, then surface the final cause.
+- Keep generated `.foundry/agent-metadata.yaml` local and ignored. Track only
+  the environment-neutral metadata example.
+- Use Python 3.12 for the local virtual environment and Python 3.13 for Hosted
+  Code and the optional Dockerfile.
 - Make destructive resource and Memory deletion explicit and confirmation
   gated.
 - Add or update focused `unittest` coverage with each behavior change.
