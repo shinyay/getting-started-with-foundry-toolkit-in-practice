@@ -10,6 +10,7 @@ from agent_framework_foundry_hosting import ResponsesHostServer
 from azure.identity.aio import DefaultAzureCredential
 
 from .memory_config import MEMORY_HEALTH_QUERY, memory_search_items
+from .memory_tools import create_memory_tools
 from .settings import GatewaySettings
 
 logger = logging.getLogger(__name__)
@@ -26,20 +27,26 @@ tell them this tutorial is for synthetic test data only.
 The configured Memory scope is shared tutorial state, not a private per-user
 store. Keep answers concise, state when remembered context influenced an
 answer, and never claim that caller identity provides Memory isolation.
+
+When a user explicitly asks to remember an exact synthetic association whose
+key starts with akg and whose value starts with akv, you must call
+remember_synthetic_association with the complete key and value before
+confirming success. Never paraphrase either argument, and never claim the pair
+was stored if the tool fails.
 """.strip()
 
 
 async def run_gateway(settings: GatewaySettings) -> None:
     """Verify Memory access, compose the Agent, and run the server."""
     credential = DefaultAzureCredential()
-    client = FoundryChatClient(
-        project_endpoint=settings.project_endpoint,
-        model=settings.model_deployment,
-        credential=credential,
-        allow_preview=True,
-    )
-
+    client: FoundryChatClient | None = None
     try:
+        client = FoundryChatClient(
+            project_endpoint=settings.project_endpoint,
+            model=settings.model_deployment,
+            credential=credential,
+            allow_preview=True,
+        )
         store = await client.project_client.beta.memory_stores.get(
             name=settings.memory_store_name
         )
@@ -64,11 +71,15 @@ async def run_gateway(settings: GatewaySettings) -> None:
             name="AgenticKnowledgeGateway",
             client=client,
             instructions=AGENT_INSTRUCTIONS,
+            tools=create_memory_tools(client.project_client, settings),
             context_providers=[memory_provider],
             default_options={"store": False},
         )
         server = ResponsesHostServer(agent)
         await server.run_async()
     finally:
-        await client.project_client.close()
-        await credential.close()
+        try:
+            if client is not None:
+                await client.project_client.close()
+        finally:
+            await credential.close()

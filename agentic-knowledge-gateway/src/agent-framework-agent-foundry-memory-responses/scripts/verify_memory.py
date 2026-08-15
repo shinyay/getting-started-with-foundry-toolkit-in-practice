@@ -1,40 +1,45 @@
-"""Poll Foundry Memory and verify expected tutorial concepts."""
+"""Verify a run-specific synthetic key/value pair through Foundry Memory."""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import time
 
 from azure.ai.projects.aio import AIProjectClient
 from azure.identity.aio import DefaultAzureCredential
 from dotenv import load_dotenv
 
-from gateway.memory_config import memory_search_items
 from gateway.settings import GatewaySettings
+from scripts.memory_polling import (
+    list_memory_contents_with_retry,
+    wait_for_memory_proof,
+)
 from scripts.memory_proof import (
-    PREFERENCE_TERMS,
+    MemoryProof,
     has_memory_proof,
-    proof_code,
-    recall_query,
-    validate_marker,
+    validate_key,
+    validate_value,
 )
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--marker",
+        "--key",
         required=True,
-        type=validate_marker,
-        help="Unique synthetic marker included in the current remember request.",
+        type=validate_key,
+        help="Unique synthetic key included in the current remember request.",
     )
-    parser.add_argument("--query")
     parser.add_argument(
-        "--expect",
-        action="append",
-        dest="expected_terms",
-        help="Required term. Repeat the option to require multiple terms.",
+        "--value",
+        required=True,
+        type=validate_value,
+        help="Independent synthetic value associated with the key.",
+    )
+    parser.add_argument(
+        "--expect-absent",
+        action="store_true",
+        help="Fail if the exact pair already exists; use before the write.",
     )
     parser.add_argument("--timeout", type=int, default=300)
     return parser.parse_args()
@@ -42,9 +47,7 @@ def parse_args() -> argparse.Namespace:
 
 async def verify(args: argparse.Namespace) -> None:
     settings = GatewaySettings.from_env()
-    expected_terms = args.expected_terms or list(PREFERENCE_TERMS)
-    query = args.query or recall_query(args.marker)
-    deadline = time.monotonic() + args.timeout
+    proof = MemoryProof(args.key, args.value)
 
     async with (
         DefaultAzureCredential() as credential,
@@ -54,33 +57,32 @@ async def verify(args: argparse.Namespace) -> None:
             allow_preview=True,
         ) as project,
     ):
-        while time.monotonic() < deadline:
-            result = await project.beta.memory_stores.search_memories(
-                name=settings.memory_store_name,
-                scope=settings.memory_scope,
-                items=memory_search_items(query),
+        if args.expect_absent:
+            contents = await list_memory_contents_with_retry(
+                project,
+                settings,
+                timeout=args.timeout,
             )
-            contents = [
-                item.memory_item.content for item in result.memories
-            ]
-            if has_memory_proof(
-                contents,
-                args.marker,
-                expected_terms,
-            ):
-                print(
-                    "Verified this run's composite code in one Foundry "
-                    "Memory item:"
+            if has_memory_proof(contents, proof):
+                raise RuntimeError(
+                    "The generated key/value pair already exists in Foundry "
+                    f"Memory: {proof.pair}"
                 )
-                for content in contents:
-                    print(f"- {content}")
-                return
-            await asyncio.sleep(5)
+            print("Verified the generated key/value pair is absent.")
+            return
 
-    raise TimeoutError(
-        "Foundry Memory did not return all expected terms before timeout: "
-        + ", ".join([proof_code(args.marker), *expected_terms])
-    )
+        contents = await wait_for_memory_proof(
+            project,
+            settings,
+            proof,
+            timeout=args.timeout,
+        )
+        print(
+            "Verified this run's exact key/value pair in one Foundry "
+            "Memory item:"
+        )
+        for content in contents:
+            print(f"- {content}")
 
 
 def main() -> None:

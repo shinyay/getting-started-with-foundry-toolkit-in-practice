@@ -7,3 +7,5 @@
 htmlcov/
 **/.foundry/results/*
 !**/.foundry/results/.gitkeep
+**/.foundry/agent-metadata.yaml
+!**/.foundry/agent-metadata.example.yaml

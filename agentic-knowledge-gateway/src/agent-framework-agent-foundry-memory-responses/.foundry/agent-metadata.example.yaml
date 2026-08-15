@@ -1,10 +1,10 @@
 defaultEnvironment: dev
 environments:
   dev:
-    projectEndpoint: https://cog-cro7djk2qjiua.services.ai.azure.com/api/projects/dev
+    projectEndpoint: https://<account>.services.ai.azure.com/api/projects/<project>
     agentName: agentic-knowledge-gateway
-    agentVersion: "2"
-    region: eastus2
+    agentVersion: "<generated-after-deploy>"
+    region: <azure-region>
     deploymentMode: code-remote-build
     protocols:
       responses: "2.0.0"
@@ -13,6 +13,9 @@ environments:
       storeName: agentic_knowledge_gateway_memory
       scope: akg-tutorial-scope
       defaultTtlSeconds: 604800
+    models:
+      chatDeployment: <chat-deployment-name>
+      embeddingDeployment: <embedding-deployment-name>
     testCases:
       - id: smoke-core
         priority: P0

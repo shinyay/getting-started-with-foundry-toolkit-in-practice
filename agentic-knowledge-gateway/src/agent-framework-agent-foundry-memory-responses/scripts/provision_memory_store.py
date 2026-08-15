@@ -74,6 +74,12 @@ async def provision() -> None:
             f"Verified Memory Store '{store.name}' and scope "
             f"'{gateway.memory_scope}'."
         )
+        print(
+            "Verified strict definition: "
+            f"chat={gateway.model_deployment}, "
+            f"embedding={settings.embedding_model_deployment}, "
+            "default_ttl_seconds=604800."
+        )
 
 
 def main() -> None:

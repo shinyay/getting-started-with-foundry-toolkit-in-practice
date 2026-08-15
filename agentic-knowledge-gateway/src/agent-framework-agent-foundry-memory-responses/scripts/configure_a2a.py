@@ -19,11 +19,13 @@ def configure() -> None:
     settings = A2ASettings.from_env()
     gateway = settings.gateway
     credential = DefaultAzureCredential()
-    project = AIProjectClient(
-        endpoint=gateway.project_endpoint,
-        credential=credential,
-    )
+    project: AIProjectClient | None = None
     try:
+        project = AIProjectClient(
+            endpoint=gateway.project_endpoint,
+            credential=credential,
+            allow_preview=True,
+        )
         project.agents.update_details(
             agent_name=settings.agent_name,
             agent_endpoint=build_agent_endpoint(),
@@ -54,7 +56,8 @@ def configure() -> None:
         )
         print(f"Agent Card: {card_url}")
     finally:
-        project.close()
+        if project is not None:
+            project.close()
         credential.close()
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import time
+from collections.abc import Mapping
 from typing import Any
 
 import httpx
@@ -17,11 +17,15 @@ from dotenv import load_dotenv
 from google.protobuf.json_format import MessageToDict
 
 from gateway.a2a_config import a2a_base_url, has_v1_jsonrpc_interface
-from gateway.memory_config import memory_search_items
 from gateway.settings import A2ASettings
+from scripts.memory_polling import (
+    list_memory_contents_with_retry,
+    wait_for_memory_proof,
+)
 from scripts.memory_proof import (
-    create_marker,
+    create_proof,
     has_memory_proof,
+    has_recalled_value,
     recall_query,
     remember_message,
 )
@@ -29,58 +33,35 @@ from scripts.memory_proof import (
 MEMORY_POLL_TIMEOUT_SECONDS = 300
 
 
-async def wait_for_memory(
-    settings: A2ASettings,
-    marker: str,
-) -> None:
-    """Poll the authoritative Memory API instead of trusting agent prose."""
-    deadline = time.monotonic() + MEMORY_POLL_TIMEOUT_SECONDS
-    gateway = settings.gateway
-    async with (
-        AsyncCredential() as credential,
-        AIProjectClient(
-            endpoint=gateway.project_endpoint,
-            credential=credential,
-            allow_preview=True,
-        ) as project,
-    ):
-        while time.monotonic() < deadline:
-            result = await project.beta.memory_stores.search_memories(
-                name=gateway.memory_store_name,
-                scope=gateway.memory_scope,
-                items=memory_search_items(recall_query(marker)),
-            )
-            contents = [
-                item.memory_item.content
-                for item in result.memories
-            ]
-            if has_memory_proof(contents, marker):
-                print(
-                    "Verified this run's synthetic fact in Foundry Memory."
-                )
-                return
-            await asyncio.sleep(5)
-    raise TimeoutError("The synthetic fact did not appear in Memory.")
+def _message_texts(message: Mapping[str, Any] | None) -> list[str]:
+    if not message:
+        return []
+    return [
+        str(part["text"])
+        for part in message.get("parts", [])
+        if part.get("text")
+    ]
+
+
+def response_text_from_payload(payload: Mapping[str, Any]) -> str:
+    """Extract unique text from every A2A v1.0 response channel."""
+    task = payload.get("task", {})
+    texts: list[str] = []
+    for artifact in task.get("artifacts", []):
+        texts.extend(_message_texts(artifact))
+    texts.extend(_message_texts(task.get("status", {}).get("message")))
+    texts.extend(_message_texts(payload.get("message")))
+
+    unique_texts = list(dict.fromkeys(texts))
+    if not unique_texts:
+        raise RuntimeError("The A2A response contained no text output.")
+    return "\n".join(unique_texts)
 
 
 def response_text(response: Any) -> str:
-    """Extract text artifacts from an A2A protobuf response."""
+    """Extract text from an A2A protobuf response."""
     payload = MessageToDict(response, preserving_proto_field_name=True)
-    texts: list[str] = []
-    for artifact in payload.get("task", {}).get("artifacts", []):
-        texts.extend(
-            part["text"]
-            for part in artifact.get("parts", [])
-            if part.get("text")
-        )
-    texts.extend(
-        part["text"]
-        for part in payload.get("message", {}).get("parts", [])
-        if part.get("text")
-    )
-    if not texts:
-        raise RuntimeError("The A2A response contained no text output.")
-    return "\n".join(texts)
+    return response_text_from_payload(payload)
 
 
 async def send_text(client: Any, text: str) -> str:
@@ -97,50 +78,85 @@ async def send_text(client: Any, text: str) -> str:
 async def run() -> None:
     settings = A2ASettings.from_env()
     gateway = settings.gateway
-    marker = create_marker()
-    print(f"Verification marker: {marker}")
+    proof = create_proof()
+    print(f"Verification key: {proof.key}")
+    print(f"Expected value: {proof.value}")
     base_url = a2a_base_url(
         gateway.project_endpoint, settings.agent_name
     )
-    credential = DefaultAzureCredential()
-    try:
-        token = credential.get_token(
-            "https://ai.azure.com/.default"
-        ).token
-        async with httpx.AsyncClient(
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=httpx.Timeout(120.0),
-        ) as http_client:
-            resolver = A2ACardResolver(
-                httpx_client=http_client,
-                base_url=base_url,
-                agent_card_path="agentCard/v1.0",
+
+    async with (
+        AsyncCredential() as memory_credential,
+        AIProjectClient(
+            endpoint=gateway.project_endpoint,
+            credential=memory_credential,
+            allow_preview=True,
+        ) as project,
+    ):
+        existing = await list_memory_contents_with_retry(
+            project,
+            gateway,
+            timeout=60,
+        )
+        if has_memory_proof(existing, proof):
+            raise RuntimeError(
+                "The generated key/value pair unexpectedly already exists."
             )
-            card = await resolver.get_agent_card()
-            if not has_v1_jsonrpc_interface(card):
-                raise RuntimeError(
-                    "The Agent Card does not advertise A2A v1.0 JSON-RPC."
-                )
-            client = await create_client(
-                agent=card,
-                client_config=ClientConfig(
-                    streaming=False,
+        print("Verified the generated key/value pair is absent.")
+
+        credential = DefaultAzureCredential()
+        try:
+            token = credential.get_token(
+                "https://ai.azure.com/.default"
+            ).token
+            async with httpx.AsyncClient(
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=httpx.Timeout(120.0),
+            ) as http_client:
+                resolver = A2ACardResolver(
                     httpx_client=http_client,
-                ),
-            )
-            try:
-                await send_text(client, remember_message(marker))
-                await wait_for_memory(settings, marker)
-                recall = await send_text(client, recall_query(marker))
-                if not has_memory_proof([recall], marker):
+                    base_url=base_url,
+                    agent_card_path="agentCard/v1.0",
+                )
+                card = await resolver.get_agent_card()
+                if not has_v1_jsonrpc_interface(card):
                     raise RuntimeError(
-                        "A2A recall did not contain this run's marker and "
-                        "expected preference."
+                        "The Agent Card does not advertise A2A v1.0 JSON-RPC."
                     )
-            finally:
-                await client.close()
-    finally:
-        credential.close()
+                client = await create_client(
+                    agent=card,
+                    client_config=ClientConfig(
+                        streaming=False,
+                        httpx_client=http_client,
+                    ),
+                )
+                try:
+                    await send_text(client, remember_message(proof))
+                    contents = await wait_for_memory_proof(
+                        project,
+                        gateway,
+                        proof,
+                        timeout=MEMORY_POLL_TIMEOUT_SECONDS,
+                    )
+                    print(
+                        "Verified this run's exact pair in one Foundry "
+                        "Memory item."
+                    )
+                    for content in contents:
+                        print(f"- {content}")
+                    recall = await send_text(
+                        client,
+                        recall_query(proof.key),
+                    )
+                    if not has_recalled_value(recall, proof):
+                        raise RuntimeError(
+                            "A2A fresh-task recall did not contain this run's "
+                            "independent value."
+                        )
+                finally:
+                    await client.close()
+        finally:
+            credential.close()
 
 
 def main() -> None:

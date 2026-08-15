@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 from azure.ai.projects.models import (
@@ -22,12 +21,6 @@ MEMORY_PROFILE_DETAILS = (
 def memory_search_items(query: str) -> list[dict[str, str]]:
     """Build the Responses input shape required by Memory search."""
     return [{"type": "message", "role": "user", "content": query}]
-
-
-def contains_all_terms(values: Iterable[str], terms: Iterable[str]) -> bool:
-    """Match concepts across normalized Memory items rather than exact prose."""
-    combined = " ".join(values).lower()
-    return all(term.lower() in combined for term in terms)
 
 
 def build_memory_definition(

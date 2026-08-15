@@ -1,67 +1,123 @@
 import unittest
 
+from scripts.a2a_client import response_text_from_payload
 from scripts.memory_proof import (
-    create_marker,
+    MemoryProof,
+    create_proof,
     has_memory_proof,
-    proof_code,
+    has_recalled_value,
     recall_query,
     remember_message,
-    validate_marker,
+    validate_key,
+    validate_value,
 )
 
-MARKER = "akg0123456789abcdef"
-OTHER_MARKER = MARKER.replace("0", "1", 1)
+KEY = "akg0123456789abcdef"
+VALUE = "akvfedcba9876543210"
+OTHER_VALUE = "akv1111111111111111"
+PROOF = MemoryProof(KEY, VALUE)
 
 
 class MemoryProofTests(unittest.TestCase):
-    def test_proof_code_in_one_item_passes(self) -> None:
+    def test_generated_key_and_value_are_valid_and_independent(self) -> None:
+        proof = create_proof()
+        self.assertEqual(validate_key(proof.key), proof.key)
+        self.assertEqual(validate_value(proof.value), proof.value)
+        self.assertNotEqual(proof.key[3:], proof.value[3:])
+
+    def test_recall_query_does_not_expose_value(self) -> None:
+        query = recall_query(PROOF.key)
+        self.assertIn(PROOF.key, query)
+        self.assertNotIn(PROOF.value, query)
+
+    def test_remember_message_contains_exact_pair(self) -> None:
+        self.assertIn(PROOF.pair, remember_message(PROOF))
+
+    def test_exact_pair_in_one_item_passes(self) -> None:
         self.assertTrue(
             has_memory_proof(
-                [
-                    "The exact preference code is "
-                    f"{proof_code(MARKER)}.",
-                ],
-                MARKER,
+                [f"The exact synthetic pair is {PROOF.pair}."],
+                PROOF,
             )
         )
 
-    def test_custom_term_must_share_the_proof_item(self) -> None:
+    def test_split_key_and_value_cannot_pass(self) -> None:
         self.assertFalse(
             has_memory_proof(
-                [f"The exact preference code is {proof_code(MARKER)}."],
-                MARKER,
-                ("brief",),
+                [f"Key: {PROOF.key}", f"Value: {PROOF.value}"],
+                PROOF,
             )
         )
 
-    def test_stale_concepts_cannot_combine_with_marker(self) -> None:
+    def test_wrong_value_cannot_pass(self) -> None:
         self.assertFalse(
             has_memory_proof(
-                [
-                    "The user prefers concise answers.",
-                    "Use bullet-point formatting.",
-                    f"Marker: {MARKER}",
-                ],
-                MARKER,
+                [f"Pair: {PROOF.key}={OTHER_VALUE}"],
+                PROOF,
             )
         )
 
-    def test_preference_rejects_another_runs_code(self) -> None:
+    def test_fresh_recall_requires_independent_value(self) -> None:
+        self.assertTrue(has_recalled_value(f"Value: {PROOF.value}", PROOF))
         self.assertFalse(
-            has_memory_proof(
-                [f"Preference code: {proof_code(OTHER_MARKER)}"],
-                MARKER,
-            )
+            has_recalled_value(f"Value: {OTHER_VALUE}", PROOF)
         )
 
-    def test_generated_marker_is_valid(self) -> None:
-        marker = create_marker()
-        self.assertEqual(validate_marker(marker), marker)
 
-    def test_messages_include_the_full_proof_code(self) -> None:
-        code = proof_code(MARKER)
-        self.assertIn(code, remember_message(MARKER))
-        self.assertIn(code, recall_query(MARKER))
+class A2AResponseTests(unittest.TestCase):
+    def test_extracts_artifact_text(self) -> None:
+        payload = {
+            "task": {
+                "artifacts": [
+                    {"parts": [{"text": "artifact output"}]}
+                ]
+            }
+        }
+        self.assertEqual(
+            response_text_from_payload(payload),
+            "artifact output",
+        )
+
+    def test_extracts_task_status_message_text(self) -> None:
+        payload = {
+            "task": {
+                "status": {
+                    "message": {
+                        "parts": [{"text": "status output"}]
+                    }
+                }
+            }
+        }
+        self.assertEqual(
+            response_text_from_payload(payload),
+            "status output",
+        )
+
+    def test_extracts_top_level_message_text(self) -> None:
+        payload = {"message": {"parts": [{"text": "message output"}]}}
+        self.assertEqual(
+            response_text_from_payload(payload),
+            "message output",
+        )
+
+    def test_deduplicates_text_across_channels(self) -> None:
+        payload = {
+            "task": {
+                "artifacts": [{"parts": [{"text": "same output"}]}],
+                "status": {
+                    "message": {"parts": [{"text": "same output"}]}
+                },
+            },
+            "message": {"parts": [{"text": "same output"}]},
+        }
+        self.assertEqual(
+            response_text_from_payload(payload),
+            "same output",
+        )
+
+    def test_empty_response_is_rejected(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "no text output"):
+            response_text_from_payload({"task": {}})
 
 
 if __name__ == "__main__":

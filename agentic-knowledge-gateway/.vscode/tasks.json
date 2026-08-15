@@ -32,14 +32,49 @@
       "problemMatcher": []
     },
     {
-      "label": "Verify Gateway Memory",
+      "label": "Verify Gateway Memory Pair Is Absent",
       "type": "shell",
       "command": "${workspaceFolder}/.venv/bin/python",
       "args": [
         "-m",
         "scripts.verify_memory",
-        "--marker",
-        "${input:memoryMarker}"
+        "--key",
+        "${input:memoryProofKey}",
+        "--value",
+        "${input:memoryProofValue}",
+        "--expect-absent"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/src/agent-framework-agent-foundry-memory-responses"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Verify Gateway Memory Pair",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-m",
+        "scripts.verify_memory",
+        "--key",
+        "${input:memoryProofKey}",
+        "--value",
+        "${input:memoryProofValue}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/src/agent-framework-agent-foundry-memory-responses"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Sync Foundry Agent Metadata",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "args": [
+        "-m",
+        "scripts.sync_agent_metadata",
+        "--environment",
+        "${input:foundryEnvironment}"
       ],
       "options": {
         "cwd": "${workspaceFolder}/src/agent-framework-agent-foundry-memory-responses"
@@ -140,9 +175,20 @@
   ],
   "inputs": [
     {
-      "id": "memoryMarker",
+      "id": "memoryProofKey",
       "type": "promptString",
-      "description": "Unique marker from the current remember request (akg + 16 hex characters)"
+      "description": "Opaque key from the current proof (akg + 16 hex characters)"
+    },
+    {
+      "id": "memoryProofValue",
+      "type": "promptString",
+      "description": "Independent value from the current proof (akv + 16 hex characters)"
+    },
+    {
+      "id": "foundryEnvironment",
+      "type": "promptString",
+      "description": "azd environment to sync into local Foundry metadata",
+      "default": "dev"
     },
     {
       "id": "openAgentInspector",
