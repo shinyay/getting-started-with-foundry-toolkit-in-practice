@@ -10,6 +10,7 @@ import httpx
 from a2a.client import A2ACardResolver, ClientConfig, create_client
 from a2a.helpers import new_text_message
 from a2a.types.a2a_pb2 import Role, SendMessageRequest
+from a2a.utils.errors import InternalError
 from azure.ai.projects.aio import AIProjectClient
 from azure.identity import DefaultAzureCredential
 from azure.identity.aio import DefaultAzureCredential as AsyncCredential
@@ -23,6 +24,7 @@ from scripts.memory_polling import (
     wait_for_memory_proof,
 )
 from scripts.memory_proof import (
+    MemoryProof,
     create_proof,
     has_memory_proof,
     has_recalled_value,
@@ -64,15 +66,50 @@ def response_text(response: Any) -> str:
     return response_text_from_payload(payload)
 
 
-async def send_text(client: Any, text: str) -> str:
-    message = new_text_message(text, role=Role.ROLE_USER)
-    request = SendMessageRequest(message=message)
-    chunks: list[str] = []
-    async for response in client.send_message(request):
-        rendered = response_text(response)
-        chunks.append(rendered)
-        print(rendered, flush=True)
-    return "\n".join(chunks)
+async def send_text(
+    client: Any,
+    text: str,
+    *,
+    internal_error_retries: int = 0,
+    retry_delay: float = 2.0,
+) -> str:
+    """Send a new A2A task with bounded retry before any output arrives."""
+    if internal_error_retries < 0:
+        raise ValueError("internal_error_retries must be zero or greater")
+
+    for attempt in range(internal_error_retries + 1):
+        message = new_text_message(text, role=Role.ROLE_USER)
+        request = SendMessageRequest(message=message)
+        chunks: list[str] = []
+        try:
+            async for response in client.send_message(request):
+                rendered = response_text(response)
+                chunks.append(rendered)
+                print(rendered, flush=True)
+            return "\n".join(chunks)
+        except InternalError:
+            if chunks or attempt >= internal_error_retries:
+                raise
+            print(
+                "A2A returned a transient internal error before output; "
+                "retrying with a new task.",
+                flush=True,
+            )
+            await asyncio.sleep(retry_delay)
+
+    raise AssertionError("A2A retry loop completed without a result")
+
+
+def require_remember_acknowledgement(
+    text: str,
+    proof: MemoryProof,
+) -> None:
+    """Fail before polling when A2A did not acknowledge the exact pair."""
+    if not has_memory_proof([text], proof):
+        raise RuntimeError(
+            "A2A remember response did not acknowledge this run's exact "
+            "synthetic pair; authoritative Memory polling was not started."
+        )
 
 
 async def run() -> None:
@@ -131,7 +168,14 @@ async def run() -> None:
                     ),
                 )
                 try:
-                    await send_text(client, remember_message(proof))
+                    acknowledgement = await send_text(
+                        client,
+                        remember_message(proof),
+                    )
+                    require_remember_acknowledgement(
+                        acknowledgement,
+                        proof,
+                    )
                     contents = await wait_for_memory_proof(
                         project,
                         gateway,
@@ -147,6 +191,7 @@ async def run() -> None:
                     recall = await send_text(
                         client,
                         recall_query(proof.key),
+                        internal_error_retries=1,
                     )
                     if not has_recalled_value(recall, proof):
                         raise RuntimeError(

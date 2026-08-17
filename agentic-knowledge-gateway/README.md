@@ -927,10 +927,12 @@ The client:
 5. confirms the exact pair is absent from the Memory item list;
 6. sends the exact pair through A2A so the Gateway invokes its strict
    write-through tool;
-7. requires one authoritative Foundry Memory item containing that pair;
-8. creates a new A2A message/task without prior task context;
-9. asks for the value using only the key; and
-10. requires the independent value in the returned text.
+7. fails immediately if the response does not acknowledge that exact pair;
+8. requires one authoritative Foundry Memory item containing that pair;
+9. creates a new A2A message/task without prior task context;
+10. asks for the value using only the key, retrying one read-only task if the
+    preview endpoint returns `InternalError` before any output; and
+11. requires the independent value in the returned text.
 
 Expected output shape:
 
@@ -1013,7 +1015,8 @@ datasets are advanced follow-ups.
 | Hosted invocation returns 403 | Instance identity lacks minimum runtime access | Assign Cognitive Services User at account scope and the Project/model roles shown above. |
 | Hosted version is active but startup repeatedly fails | Memory health check or runtime environment is invalid | Run `azd ai agent monitor`, inspect the exact session, and verify model, store, scope, and RBAC. |
 | A2A card returns 200 but top-level `protocolVersion` is absent | v1.0 advertises protocols under `supportedInterfaces` | Require a JSONRPC interface whose `protocolVersion` is `1.0`. |
-| A2A request returns a transient internal error | Incoming A2A and Hosted routing are preview services | Confirm the version is active, inspect session logs, retry once, and avoid hiding repeatable failures. |
+| A2A request returns a transient internal error | Incoming A2A and Hosted routing are preview services | The bundled client retries only the read-only recall once and only before any output. It never automatically resends the write; inspect session logs for repeatable failures. |
+| A2A remember returns a refusal without the exact pair | The model did not classify the request as the permitted synthetic proof | Use the bundled client prompt, which explicitly identifies non-sensitive synthetic data and requests the strict tool. The client fails before polling; inspect logs if one retry is also refused. |
 | `azd ai agent invoke --protocol a2a` reports a missing `kind` | Tested CLI emitted a legacy payload shape | Use `scripts.a2a_client`, which uses `a2a-sdk` 1.0.2 and the authenticated v1.0 card. |
 | `DefaultAzureCredential` logs a local IMDS timeout before succeeding | The local credential chain probed managed identity before Azure CLI | This is expected locally if the chain later reports `AzureCliCredential` success. |
 

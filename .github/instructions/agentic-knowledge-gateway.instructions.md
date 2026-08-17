@@ -31,6 +31,8 @@ applyTo: "agentic-knowledge-gateway/**"
   extraction alone is not verbatim proof.
 - Retry only explicitly classified transient Memory service failures within a
   bounded deadline, then surface the final cause.
+- Do not automatically retry A2A writes. A read-only recall may retry one
+  `InternalError` only if no output was received.
 - Keep generated `.foundry/agent-metadata.yaml` local and ignored. Track only
   the environment-neutral metadata example.
 - Use Python 3.12 for the local virtual environment and Python 3.13 for Hosted

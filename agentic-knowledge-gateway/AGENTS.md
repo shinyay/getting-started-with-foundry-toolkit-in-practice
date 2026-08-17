@@ -20,6 +20,8 @@ Agent Framework, Responses 2.0, Foundry Memory, and incoming A2A v1.0.
   after cloud deployment.
 - A2A uses Agent Card v1.0, non-streaming JSON-RPC, and authenticated
   discovery from `agentCard/v1.0`.
+- Never automatically retry an A2A write. A read-only recall may retry one
+  `InternalError` only when no response output was received.
 
 ## Development workflow
 

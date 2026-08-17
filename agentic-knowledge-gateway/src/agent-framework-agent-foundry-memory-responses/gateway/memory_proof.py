@@ -69,8 +69,9 @@ def contains_memory_proof_pair(text: str) -> bool:
 def remember_message(proof: MemoryProof) -> str:
     """Build the synthetic fact written during the current proof run."""
     return (
-        "Remember this exact synthetic tutorial key/value association as one "
-        f"fact: {proof.pair}. Preserve the complete pair exactly."
+        "This is synthetic, non-sensitive tutorial data. Call "
+        "remember_synthetic_association with this exact key/value association: "
+        f"{proof.pair}. Preserve the complete pair exactly."
     )
 
 

@@ -1,6 +1,13 @@
 import unittest
+from unittest.mock import AsyncMock, patch
 
-from scripts.a2a_client import response_text_from_payload
+from a2a.utils.errors import InternalError
+
+from scripts.a2a_client import (
+    require_remember_acknowledgement,
+    response_text_from_payload,
+    send_text,
+)
 from scripts.memory_proof import (
     MemoryProof,
     create_proof,
@@ -118,6 +125,92 @@ class A2AResponseTests(unittest.TestCase):
     def test_empty_response_is_rejected(self) -> None:
         with self.assertRaisesRegex(RuntimeError, "no text output"):
             response_text_from_payload({"task": {}})
+
+    def test_remember_refusal_fails_before_memory_polling(self) -> None:
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "did not acknowledge",
+        ):
+            require_remember_acknowledgement(
+                "I cannot store that.",
+                PROOF,
+            )
+
+    def test_exact_remember_acknowledgement_passes(self) -> None:
+        require_remember_acknowledgement(
+            f"Stored exact synthetic association: {PROOF.pair}",
+            PROOF,
+        )
+
+
+class FakeA2AClient:
+    def __init__(self, outcomes: list[list[object] | BaseException]) -> None:
+        self.outcomes = outcomes
+        self.calls = 0
+
+    def send_message(self, _: object):
+        outcome = self.outcomes[self.calls]
+        self.calls += 1
+
+        async def responses():
+            if isinstance(outcome, BaseException):
+                raise outcome
+            for response in outcome:
+                yield response
+
+        return responses()
+
+
+class A2ARetryTests(unittest.IsolatedAsyncioTestCase):
+    async def test_read_only_retry_uses_a_new_task(self) -> None:
+        client = FakeA2AClient([InternalError(), [object()]])
+        with (
+            patch(
+                "scripts.a2a_client.response_text",
+                return_value="recalled",
+            ),
+            patch(
+                "scripts.a2a_client.asyncio.sleep",
+                new=AsyncMock(),
+            ) as sleep,
+        ):
+            result = await send_text(
+                client,
+                "recall",
+                internal_error_retries=1,
+            )
+        self.assertEqual(result, "recalled")
+        self.assertEqual(client.calls, 2)
+        sleep.assert_awaited_once()
+
+    async def test_partial_output_is_never_retried(self) -> None:
+        class PartialThenErrorClient:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def send_message(self, _: object):
+                self.calls += 1
+
+                async def responses():
+                    yield object()
+                    raise InternalError()
+
+                return responses()
+
+        client = PartialThenErrorClient()
+        with (
+            patch(
+                "scripts.a2a_client.response_text",
+                return_value="partial",
+            ),
+            self.assertRaises(InternalError),
+        ):
+            await send_text(
+                client,
+                "recall",
+                internal_error_retries=1,
+            )
+        self.assertEqual(client.calls, 1)
 
 
 if __name__ == "__main__":
