@@ -8,7 +8,7 @@ GATEWAY_ROOT = Path(__file__).resolve().parents[3]
 
 
 class ProjectFileTests(unittest.TestCase):
-    def test_deployment_names_use_azd_values(self) -> None:
+    def test_deployment_names_are_valid_arm_literals(self) -> None:
         manifest = yaml.safe_load(
             (GATEWAY_ROOT / "azure.yaml").read_text(encoding="utf-8")
         )
@@ -16,8 +16,8 @@ class ProjectFileTests(unittest.TestCase):
         self.assertEqual(
             [item["name"] for item in deployments],
             [
-                "${AZURE_AI_MODEL_DEPLOYMENT_NAME}",
-                "${AZURE_AI_EMBEDDING_MODEL_DEPLOYMENT_NAME}",
+                "gpt-5.4-mini",
+                "text-embedding-3-small",
             ],
         )
 

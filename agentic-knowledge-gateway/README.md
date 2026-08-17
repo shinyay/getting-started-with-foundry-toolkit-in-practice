@@ -430,9 +430,10 @@ In VS Code:
 ## 5. Configure and Provision Microsoft Foundry
 
 The manifest creates a new East US 2 Project and declares both model
-deployments. Deployment resource names come from the `azd` values below.
-Change the region or model family/version only after checking current support,
-capacity, and quota.
+deployments with literal resource names. The `microsoft.foundry` provider passes
+deployment `name` entries directly to ARM, so `${...}` placeholders are not
+valid in those entries. Change the region, deployment name, or model
+family/version only after checking current support, capacity, and quota.
 
 Create or select the `azd` environment:
 
@@ -459,10 +460,11 @@ azd env set FOUNDRY_HOSTED_AGENT_NAME "agentic-knowledge-gateway"
 ```
 
 `AZURE_AI_MODEL_DEPLOYMENT_NAME` and
-`AZURE_AI_EMBEDDING_MODEL_DEPLOYMENT_NAME` control deployment resource names
-and runtime references. To change the actual catalog model family or version,
-edit the corresponding `model.name` and `model.version` in `azure.yaml` as a
-separate reviewed change.
+`AZURE_AI_EMBEDDING_MODEL_DEPLOYMENT_NAME` tell local and Hosted runtimes which
+deployed models to call. Their values must match the literal
+`services.ai-project.deployments[].name` entries in `azure.yaml`. To change a
+deployment name or its catalog model, update the manifest and the corresponding
+`azd` value together as one reviewed change.
 
 Provision the Project and model deployments:
 
