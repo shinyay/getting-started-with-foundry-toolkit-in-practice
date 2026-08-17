@@ -33,6 +33,7 @@ from scripts.memory_proof import (
 )
 
 MEMORY_POLL_TIMEOUT_SECONDS = 300
+UNACKNOWLEDGED_POLL_TIMEOUT_SECONDS = 120
 
 
 def _message_texts(message: Mapping[str, Any] | None) -> list[str]:
@@ -100,16 +101,50 @@ async def send_text(
     raise AssertionError("A2A retry loop completed without a result")
 
 
-def require_remember_acknowledgement(
-    text: str,
+def acknowledges_memory_proof(text: str, proof: MemoryProof) -> bool:
+    """Return whether A2A output restated this run's exact pair."""
+    return has_memory_proof([text], proof)
+
+
+async def prove_remembered_pair(
+    project: Any,
+    gateway: Any,
     proof: MemoryProof,
-) -> None:
-    """Fail before polling when A2A did not acknowledge the exact pair."""
-    if not has_memory_proof([text], proof):
-        raise RuntimeError(
-            "A2A remember response did not acknowledge this run's exact "
-            "synthetic pair; authoritative Memory polling was not started."
+    acknowledgement: str,
+) -> list[str]:
+    """Prove persistence from the authoritative Memory item list.
+
+    Agent prose is a diagnostic signal, never the proof. A response that
+    omits the exact pair only shortens how long this run waits before it
+    reports that the strict write-through tool did not complete.
+    """
+    acknowledged = acknowledges_memory_proof(acknowledgement, proof)
+    if not acknowledged:
+        print(
+            "A2A output did not restate this run's exact pair; checking the "
+            "authoritative Memory item list before failing.",
+            flush=True,
         )
+
+    try:
+        return await wait_for_memory_proof(
+            project,
+            gateway,
+            proof,
+            timeout=(
+                MEMORY_POLL_TIMEOUT_SECONDS
+                if acknowledged
+                else UNACKNOWLEDGED_POLL_TIMEOUT_SECONDS
+            ),
+        )
+    except TimeoutError as error:
+        if acknowledged:
+            raise
+        raise RuntimeError(
+            "A2A neither restated this run's exact synthetic pair nor "
+            "persisted it to Foundry Memory, so the Gateway did not complete "
+            "its strict write-through tool call."
+        ) from error
 
 
 async def run() -> None:
@@ -172,15 +207,11 @@ async def run() -> None:
                         client,
                         remember_message(proof),
                     )
-                    require_remember_acknowledgement(
-                        acknowledgement,
-                        proof,
-                    )
-                    contents = await wait_for_memory_proof(
+                    contents = await prove_remembered_pair(
                         project,
                         gateway,
                         proof,
-                        timeout=MEMORY_POLL_TIMEOUT_SECONDS,
+                        acknowledgement,
                     )
                     print(
                         "Verified this run's exact pair in one Foundry "

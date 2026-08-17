@@ -927,7 +927,8 @@ The client:
 5. confirms the exact pair is absent from the Memory item list;
 6. sends the exact pair through A2A so the Gateway invokes its strict
    write-through tool;
-7. fails immediately if the response does not acknowledge that exact pair;
+7. treats the response text as a diagnostic signal only, shortening the
+   verification budget when the agent does not restate the exact pair;
 8. requires one authoritative Foundry Memory item containing that pair;
 9. creates a new A2A message/task without prior task context;
 10. asks for the value using only the key, retrying one read-only task if the
@@ -940,10 +941,13 @@ Expected output shape:
 Verification key: akg0123456789abcdef
 Expected value: akvfedcba9876543210
 Verified the generated key/value pair is absent.
-Remembered: akg0123456789abcdef=akvfedcba9876543210
+Stored the exact synthetic association.
 Verified this run's exact pair in one Foundry Memory item.
 akvfedcba9876543210
 ```
+
+Agent wording varies between runs. The Memory item list, not the agent's
+sentence, decides whether the pair persisted.
 
 The test proves authenticated A2A interoperability for one developer identity.
 It does not prove OBO propagation or two-user Memory isolation.

@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, patch
 from a2a.utils.errors import InternalError
 
 from scripts.a2a_client import (
-    require_remember_acknowledgement,
+    acknowledges_memory_proof,
+    prove_remembered_pair,
     response_text_from_payload,
     send_text,
 )
@@ -126,21 +127,88 @@ class A2AResponseTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no text output"):
             response_text_from_payload({"task": {}})
 
-    def test_remember_refusal_fails_before_memory_polling(self) -> None:
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "did not acknowledge",
-        ):
-            require_remember_acknowledgement(
-                "I cannot store that.",
+    def test_refusal_is_not_treated_as_acknowledgement(self) -> None:
+        self.assertFalse(
+            acknowledges_memory_proof("I cannot store that.", PROOF)
+        )
+
+    def test_exact_remember_acknowledgement_is_detected(self) -> None:
+        self.assertTrue(
+            acknowledges_memory_proof(
+                f"Stored exact synthetic association: {PROOF.pair}",
                 PROOF,
             )
-
-    def test_exact_remember_acknowledgement_passes(self) -> None:
-        require_remember_acknowledgement(
-            f"Stored exact synthetic association: {PROOF.pair}",
-            PROOF,
         )
+
+
+class RememberProofTests(unittest.IsolatedAsyncioTestCase):
+    async def test_unacknowledged_write_passes_when_memory_holds_pair(
+        self,
+    ) -> None:
+        with patch(
+            "scripts.a2a_client.wait_for_memory_proof",
+            new=AsyncMock(return_value=[PROOF.pair]),
+        ) as wait:
+            contents = await prove_remembered_pair(
+                object(),
+                object(),
+                PROOF,
+                "Done. I stored the association.",
+            )
+
+        self.assertEqual(contents, [PROOF.pair])
+        self.assertEqual(wait.await_args.kwargs["timeout"], 120)
+
+    async def test_acknowledged_write_uses_the_full_poll_budget(self) -> None:
+        with patch(
+            "scripts.a2a_client.wait_for_memory_proof",
+            new=AsyncMock(return_value=[PROOF.pair]),
+        ) as wait:
+            await prove_remembered_pair(
+                object(),
+                object(),
+                PROOF,
+                f"Stored exact synthetic association: {PROOF.pair}",
+            )
+
+        self.assertEqual(wait.await_args.kwargs["timeout"], 300)
+
+    async def test_unacknowledged_write_reports_missing_tool_call(
+        self,
+    ) -> None:
+        with (
+            patch(
+                "scripts.a2a_client.wait_for_memory_proof",
+                new=AsyncMock(side_effect=TimeoutError("not visible")),
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                "strict write-through tool call",
+            ),
+        ):
+            await prove_remembered_pair(
+                object(),
+                object(),
+                PROOF,
+                "I cannot store that.",
+            )
+
+    async def test_acknowledged_timeout_keeps_the_original_error(
+        self,
+    ) -> None:
+        with (
+            patch(
+                "scripts.a2a_client.wait_for_memory_proof",
+                new=AsyncMock(side_effect=TimeoutError("not visible")),
+            ),
+            self.assertRaises(TimeoutError),
+        ):
+            await prove_remembered_pair(
+                object(),
+                object(),
+                PROOF,
+                f"Stored exact synthetic association: {PROOF.pair}",
+            )
 
 
 class FakeA2AClient:
