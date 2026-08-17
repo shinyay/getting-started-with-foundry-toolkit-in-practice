@@ -29,7 +29,7 @@ By the end of the tutorial, you will be able to:
 - preserve the untouched Microsoft sample as a Git baseline;
 - use GitHub Copilot with explicit architecture and security boundaries;
 - provision a Foundry Project, chat model, embedding model, and Memory Store;
-- connect `FoundryChatClient` and `FoundryMemoryProvider`;
+- connect `FoundryChatClient` and a proof-aware `FoundryMemoryProvider`;
 - verify the current write through the Memory API with an independently random
   opaque key/value pair instead of trusting agent prose or stale shared data;
 - debug the Responses endpoint locally in Agent Inspector;
@@ -79,7 +79,7 @@ flowchart LR
     C --> E[Agent Framework Agent]
     E --> F[FoundryChatClient]
     F --> G[gpt-5.4-mini]
-    E --> H[FoundryMemoryProvider]
+    E --> H[GatewayMemoryProvider]
     H --> I[Foundry Memory Store]
     E --> L[Exact synthetic association tool]
     L -->|Memory item API| I
@@ -95,7 +95,7 @@ The boundaries are important:
 | **GitHub Copilot** | Makes bounded, reviewable changes after the Microsoft scaffold is committed. |
 | **Agent Framework** | Composes the agent, model client, context provider, and response behavior. |
 | **ResponsesHostServer** | Exposes the Hosted Agent's Responses 2.0 application contract on port `8088`. |
-| **FoundryMemoryProvider** | Searches Memory before model execution and submits interaction updates afterward. |
+| **GatewayMemoryProvider** | Uses `FoundryMemoryProvider` for semantic retrieval and ordinary updates while excluding strict proof writes from lossy after-run extraction. |
 | **Exact synthetic association tool** | Validates opaque tutorial key/value input and writes one authoritative Memory item for deterministic proof. |
 | **Foundry Memory Store** | Extracts, embeds, stores, expires, and searches semantic memory items. |
 | **Foundry incoming A2A** | Adapts authenticated A2A requests to the Hosted Agent endpoint after deployment. |
@@ -279,6 +279,8 @@ Refactor the generated sample without changing its Hosted Agent contract.
 - reuse client.project_client for the Memory provider;
 - add a strict Agent tool that accepts only tutorial-generated opaque key/value
   input and writes one exact user-profile Memory item;
+- wrap `FoundryMemoryProvider` so a turn containing that strict pair bypasses
+  semantic after-run updates that could later rewrite the authoritative item;
 - set allow_preview=True, update_delay=0, and store=False;
 - perform a real embedding-backed Memory search before server startup;
 - keep main.py responsible only for dotenv loading, settings, and asyncio.run;
@@ -358,6 +360,7 @@ agentic-knowledge-gateway/
         │   ├── app.py
         │   ├── memory_config.py
         │   ├── memory_proof.py
+        │   ├── memory_provider.py
         │   ├── memory_tools.py
         │   └── settings.py
         ├── scripts/
@@ -382,6 +385,7 @@ agentic-knowledge-gateway/
 | `gateway/settings.py` | Validates required environment values and rejects unresolved placeholders. |
 | `gateway/memory_config.py` | Defines the seven-day store, safe data instructions, typed search inputs, and drift comparison. |
 | `gateway/memory_proof.py` | Defines the runtime-safe opaque proof contract shared by the Agent tool and developer scripts. |
+| `gateway/memory_provider.py` | Preserves normal semantic updates but skips them for strict pair-write turns so they cannot rewrite the direct item. |
 | `gateway/memory_tools.py` | Validates and writes exact synthetic associations through the Memory item API. |
 | `gateway/app.py` | Performs the Memory health check and composes the Agent Framework runtime, provider, and write-through tool. |
 | `gateway/a2a_config.py` | Builds Responses + A2A endpoint configuration, Agent Card metadata, URLs, and v1 interface checks. |
@@ -597,14 +601,17 @@ data, legal data, precise locations, and other sensitive information.
 
 The Gateway uses two complementary Memory paths:
 
-- `FoundryMemoryProvider` performs semantic retrieval and automatic interaction
-  updates for ordinary synthetic preferences and project facts; and
+- `GatewayMemoryProvider` delegates semantic retrieval and automatic interaction
+  updates for ordinary synthetic preferences and project facts to
+  `FoundryMemoryProvider`; and
 - `remember_synthetic_association` handles only the strict `akg...=akv...`
   tutorial proof shape and writes it through the Memory item API.
 
 The second path is necessary because semantic extraction can legitimately
 summarize or generalize conversation text. A byte-like opaque value must not
-depend on that lossy behavior when it is used as verification evidence.
+depend on that lossy behavior when it is used as verification evidence. For a
+turn containing a strict pair, the provider skips its semantic after-run update
+so that asynchronous extraction cannot rewrite the direct authoritative item.
 
 The script is safe to rerun:
 

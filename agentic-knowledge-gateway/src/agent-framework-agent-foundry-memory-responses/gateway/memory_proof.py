@@ -9,6 +9,10 @@ from uuid import uuid4
 
 KEY_PATTERN = re.compile(r"^akg[0-9a-f]{16}$")
 VALUE_PATTERN = re.compile(r"^akv[0-9a-f]{16}$")
+PAIR_PATTERN = re.compile(
+    r"(?<![0-9a-z])akg[0-9a-f]{16}=akv[0-9a-f]{16}(?![0-9a-z])",
+    re.IGNORECASE,
+)
 
 
 def validate_key(value: str) -> str:
@@ -55,6 +59,11 @@ def create_proof() -> MemoryProof:
         key=f"akg{uuid4().hex[:16]}",
         value=f"akv{uuid4().hex[:16]}",
     )
+
+
+def contains_memory_proof_pair(text: str) -> bool:
+    """Return whether text contains one complete synthetic proof pair."""
+    return PAIR_PATTERN.search(text) is not None
 
 
 def remember_message(proof: MemoryProof) -> str:

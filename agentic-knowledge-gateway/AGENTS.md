@@ -6,10 +6,12 @@ Agent Framework, Responses 2.0, Foundry Memory, and incoming A2A v1.0.
 ## Architecture invariants
 
 - `ResponsesHostServer` remains the Hosted Agent entry point.
-- `FoundryChatClient` and `FoundryMemoryProvider` reuse one
+- `FoundryChatClient` and `GatewayMemoryProvider` reuse one
   `AIProjectClient`.
 - Exact opaque tutorial associations are written through the strict
   `remember_synthetic_association` Agent tool, not semantic extraction alone.
+- Strict pair-write turns skip the semantic after-run update so asynchronous
+  extraction cannot rewrite the direct authoritative item.
 - `MEMORY_SCOPE` is a required fixed tutorial scope. Do not describe it as
   per-user isolation.
 - The Memory Store is mandatory. Startup must fail with an actionable error

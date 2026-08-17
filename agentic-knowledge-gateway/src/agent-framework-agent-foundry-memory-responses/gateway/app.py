@@ -5,11 +5,12 @@ from __future__ import annotations
 import logging
 
 from agent_framework import Agent
-from agent_framework.foundry import FoundryChatClient, FoundryMemoryProvider
+from agent_framework.foundry import FoundryChatClient
 from agent_framework_foundry_hosting import ResponsesHostServer
 from azure.identity.aio import DefaultAzureCredential
 
 from .memory_config import MEMORY_HEALTH_QUERY, memory_search_items
+from .memory_provider import GatewayMemoryProvider
 from .memory_tools import create_memory_tools
 from .settings import GatewaySettings
 
@@ -61,7 +62,7 @@ async def run_gateway(settings: GatewaySettings) -> None:
             settings.memory_scope,
         )
 
-        memory_provider = FoundryMemoryProvider(
+        memory_provider = GatewayMemoryProvider(
             project_client=client.project_client,
             memory_store_name=settings.memory_store_name,
             scope=settings.memory_scope,

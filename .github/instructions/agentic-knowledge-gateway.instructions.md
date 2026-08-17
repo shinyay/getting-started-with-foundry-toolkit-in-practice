@@ -26,7 +26,9 @@ applyTo: "agentic-knowledge-gateway/**"
   the value out of recall queries and require the exact pair in one Memory item.
 - Use the validation-gated Agent tool and Memory item API for exact opaque
   writes. Keep `FoundryMemoryProvider` for semantic retrieval and ordinary
-  interaction updates; semantic extraction alone is not verbatim proof.
+  interaction updates, but skip its after-run update for strict pair-write
+  turns so asynchronous extraction cannot rewrite the direct item. Semantic
+  extraction alone is not verbatim proof.
 - Retry only explicitly classified transient Memory service failures within a
   bounded deadline, then surface the final cause.
 - Keep generated `.foundry/agent-metadata.yaml` local and ignored. Track only

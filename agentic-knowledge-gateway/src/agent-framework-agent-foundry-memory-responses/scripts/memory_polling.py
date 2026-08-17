@@ -145,7 +145,12 @@ async def wait_for_memory_proof(
     deadline = time.monotonic() + timeout
 
     while True:
-        remaining = max(0.0, deadline - time.monotonic())
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(
+                "Foundry Memory did not return this run's exact key/value "
+                f"pair within {timeout:g} seconds: {proof.pair}"
+            )
         contents = await list_memory_contents_with_retry(
             project,
             settings,

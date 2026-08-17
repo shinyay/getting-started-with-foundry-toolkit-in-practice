@@ -58,7 +58,7 @@ class AppLifecycleTests(unittest.IsolatedAsyncioTestCase):
                 "gateway.app.FoundryChatClient",
                 return_value=client,
             ),
-            patch("gateway.app.FoundryMemoryProvider"),
+            patch("gateway.app.GatewayMemoryProvider"),
             patch(
                 "gateway.app.create_memory_tools",
                 return_value=[tool],

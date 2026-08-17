@@ -131,6 +131,20 @@ class MemoryPollingTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertIsInstance(raised.exception.__cause__, ServiceRequestError)
 
+    async def test_missing_pair_reports_proof_timeout(self) -> None:
+        project = fake_project(memory_items("unrelated memory"))
+        with self.assertRaisesRegex(
+            TimeoutError,
+            "Foundry Memory did not return this run's exact key/value pair",
+        ):
+            await wait_for_memory_proof(
+                project,
+                SETTINGS,
+                PROOF,
+                timeout=0.01,
+                poll_interval=0.02,
+            )
+
     async def test_timeout_cancels_in_flight_operation(self) -> None:
         cancelled = asyncio.Event()
 
