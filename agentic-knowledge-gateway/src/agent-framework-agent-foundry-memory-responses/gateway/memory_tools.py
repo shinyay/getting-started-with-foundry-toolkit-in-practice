@@ -37,7 +37,7 @@ def create_memory_tools(
         )
         if item.content != proof.pair:
             raise RuntimeError(
-                "Foundry Memory did not preserve the synthetic association "
+                "The memory store did not preserve the synthetic association "
                 "exactly."
             )
         return f"Stored exact synthetic association: {proof.pair}"

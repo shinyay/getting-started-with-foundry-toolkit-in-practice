@@ -135,7 +135,7 @@ class MemoryPollingTests(unittest.IsolatedAsyncioTestCase):
         project = fake_project(memory_items("unrelated memory"))
         with self.assertRaisesRegex(
             TimeoutError,
-            "Foundry Memory did not return this run's exact key/value pair",
+            "The memory store did not return this run's exact key/value pair",
         ):
             await wait_for_memory_proof(
                 project,

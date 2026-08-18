@@ -1,4 +1,4 @@
-"""Foundry Memory Store definition and drift checks."""
+"""Agent Service memory store definition and drift checks."""
 
 from __future__ import annotations
 

@@ -2,14 +2,14 @@
 
 This beginner tutorial builds a small but complete **Agentic Knowledge
 Gateway** with Foundry Toolkit, GitHub Copilot, Microsoft Agent Framework,
-Foundry Memory, a Foundry Hosted Agent, Responses 2.0, and incoming A2A v1.0.
+Agent Service Memory, a Foundry Hosted Agent, Responses 2.0, and incoming A2A v1.0.
 
 You start from Microsoft's official Foundry Memory sample, make bounded changes
 with GitHub Copilot, verify memory through the service API, deploy the Gateway,
 and call it from a local A2A client.
 
 > [!NOTE]
-> This workflow was validated on **August 15, 2026**. Foundry Memory, Hosted
+> This workflow was validated on **August 15, 2026**. Agent Service Memory, Hosted
 > Agents, incoming A2A, Agent Framework hosting packages, and several CLI
 > surfaces used here are preview features. Preview behavior, role names, SDK
 > types, and UI labels can change.
@@ -43,7 +43,7 @@ By the end of the tutorial, you will be able to:
 
 ## What This Gateway Is—and Is Not
 
-The tutorial uses Foundry Memory as a deliberately narrow first knowledge
+The tutorial uses Agent Service Memory as a deliberately narrow first knowledge
 backend.
 
 | It demonstrates | It does not demonstrate |
@@ -52,7 +52,7 @@ backend.
 | Unambiguous key-only recall across separate Responses and A2A tasks | Per-user authorization or tenant isolation |
 | A shared seven-day tutorial scope | Production retention, privacy, or compliance controls |
 | Incoming A2A access to one Hosted Gateway | A second Hosted caller agent or OBO propagation |
-| Direct Foundry Memory integration | MCP, Foundry IQ, Azure AI Search, SQL, Cosmos DB, or graph databases |
+| Direct Agent Service Memory integration | MCP, Foundry IQ, Azure AI Search, SQL, Cosmos DB, or graph databases |
 
 The larger architecture can later grow into this:
 
@@ -67,7 +67,7 @@ Business C ───┘                 │
 ```
 
 This tutorial implements only the first vertical slice: one Gateway, one local
-A2A test client, and one Foundry Memory Store.
+A2A test client, and one memory store.
 
 ## Runtime Architecture
 
@@ -80,7 +80,7 @@ flowchart LR
     E --> F[FoundryChatClient]
     F --> G[gpt-5.4-mini]
     E --> H[GatewayMemoryProvider]
-    H --> I[Foundry Memory Store]
+    H --> I[Agent Service memory store]
     E --> L[Exact synthetic association tool]
     L -->|Memory item API| I
     I --> J[text-embedding-3-small]
@@ -97,7 +97,7 @@ The boundaries are important:
 | **ResponsesHostServer** | Exposes the Hosted Agent's Responses 2.0 application contract on port `8088`. |
 | **GatewayMemoryProvider** | Uses `FoundryMemoryProvider` for semantic retrieval and ordinary updates while excluding strict proof writes from lossy after-run extraction. |
 | **Exact synthetic association tool** | Validates opaque tutorial key/value input and writes one authoritative Memory item for deterministic proof. |
-| **Foundry Memory Store** | Extracts, embeds, stores, expires, and searches semantic memory items. |
+| **Memory store** | Extracts, embeds, stores, expires, and searches semantic memory items. |
 | **Foundry incoming A2A** | Adapts authenticated A2A requests to the Hosted Agent endpoint after deployment. |
 | **Local A2A client** | Verifies authenticated Agent Card discovery and non-streaming A2A JSON-RPC interoperability. |
 
@@ -929,7 +929,7 @@ The client:
    write-through tool;
 7. treats the response text as a diagnostic signal only, shortening the
    verification budget when the agent does not restate the exact pair;
-8. requires one authoritative Foundry Memory item containing that pair;
+8. requires one authoritative memory item containing that pair;
 9. creates a new A2A message/task without prior task context;
 10. asks for the value using only the key, retrying one read-only task if the
     preview endpoint returns `InternalError` before any output; and
@@ -942,7 +942,7 @@ Verification key: akg0123456789abcdef
 Expected value: akvfedcba9876543210
 Verified the generated key/value pair is absent.
 Stored the exact synthetic association.
-Verified this run's exact pair in one Foundry Memory item.
+Verified this run's exact pair in one memory item.
 akvfedcba9876543210
 ```
 
@@ -1098,7 +1098,7 @@ separately. Do not delete a shared Project, model, account, or resource group.
 | Topic | Documentation |
 |---|---|
 | Hosted Agent with persistent Memory | [Quickstart: Give a hosted agent persistent memory](https://learn.microsoft.com/azure/foundry/agents/quickstarts/quickstart-memory-hosted-agent) |
-| Create and use Memory | [Foundry Memory usage](https://learn.microsoft.com/azure/foundry/agents/how-to/memory-usage) |
+| Create and use Memory | [Memory usage](https://learn.microsoft.com/azure/foundry/agents/how-to/memory-usage) |
 | Hosted Agents | [Hosted Agent concepts](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agents) |
 | Hosted Agent deployment | [Deploy a Hosted Agent from code](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent-code) |
 | Hosted Agent permissions | [Hosted Agent permissions](https://learn.microsoft.com/azure/foundry/agents/concepts/hosted-agent-permissions) |

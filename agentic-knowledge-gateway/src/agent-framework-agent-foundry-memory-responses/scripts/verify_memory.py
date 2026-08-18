@@ -1,4 +1,4 @@
-"""Verify a run-specific synthetic key/value pair through Foundry Memory."""
+"""Verify a run-specific synthetic key/value pair through the memory store."""
 
 from __future__ import annotations
 
@@ -65,8 +65,8 @@ async def verify(args: argparse.Namespace) -> None:
             )
             if has_memory_proof(contents, proof):
                 raise RuntimeError(
-                    "The generated key/value pair already exists in Foundry "
-                    f"Memory: {proof.pair}"
+                    "The generated key/value pair already exists in the "
+                    f"memory store: {proof.pair}"
                 )
             print("Verified the generated key/value pair is absent.")
             return
@@ -78,8 +78,7 @@ async def verify(args: argparse.Namespace) -> None:
             timeout=args.timeout,
         )
         print(
-            "Verified this run's exact key/value pair in one Foundry "
-            "Memory item:"
+            "Verified this run's exact key/value pair in one memory item:"
         )
         for content in contents:
             print(f"- {content}")

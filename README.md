@@ -27,7 +27,7 @@ following:
 | Tutorial | Start here | Outcome |
 |---|---|---|
 | **1. Basic Hosted Agent** | Continue in this README and use [`basic-hosted-agent/`](basic-hosted-agent/) | Scaffold, customize with GitHub Copilot, debug through Responses, and deploy a first Hosted Agent. |
-| **2. Agentic Knowledge Gateway** | [`agentic-knowledge-gateway/README.md`](agentic-knowledge-gateway/README.md) | Add Foundry Memory, authoritative persistence checks, a seven-day shared tutorial scope, Hosted deployment, and incoming A2A v1.0. |
+| **2. Agentic Knowledge Gateway** | [`agentic-knowledge-gateway/README.md`](agentic-knowledge-gateway/README.md) | Add Agent Service Memory, authoritative persistence checks, a seven-day shared tutorial scope, Hosted deployment, and incoming A2A v1.0. |
 
 Tutorial 2 builds directly on the hosting, identity, debugging, and deployment
 concepts introduced here. Complete Tutorial 1 first if Foundry Toolkit,
@@ -913,7 +913,7 @@ After the basic round trip works:
 
 1. Complete
    [Tutorial 2: Agentic Knowledge Gateway](agentic-knowledge-gateway/README.md)
-   to add Foundry Memory and incoming A2A v1.0.
+   to add Agent Service Memory and incoming A2A v1.0.
 2. Replace Tutorial 2's shared scope with a trusted identity-to-scope policy
    and validate OBO plus two-user isolation.
 3. Add MCP-backed adapters and Foundry Toolbox.
@@ -938,7 +938,7 @@ After the basic round trip works:
 | Deploy from source code | [Deploy a Hosted Agent from code](https://learn.microsoft.com/azure/foundry/agents/how-to/deploy-hosted-agent-code) |
 | Hosted Agent quickstart | [Deploy your first Hosted Agent](https://learn.microsoft.com/azure/foundry/agents/quickstarts/quickstart-hosted-agent) |
 | Hosted Agent Memory quickstart | [Give a Hosted Agent persistent Memory](https://learn.microsoft.com/azure/foundry/agents/quickstarts/quickstart-memory-hosted-agent) |
-| Foundry Memory | [Create and use Memory](https://learn.microsoft.com/azure/foundry/agents/how-to/memory-usage) |
+| Memory in Agent Service | [Create and use Memory](https://learn.microsoft.com/azure/foundry/agents/how-to/memory-usage) |
 | A2A protocol | [A2A specification](https://a2a-protocol.org/latest/specification/) |
 | Foundry Project creation | [Create a Foundry Project](https://learn.microsoft.com/azure/foundry/how-to/create-projects) |
 | Model deployment | [Deploy Foundry Models](https://learn.microsoft.com/azure/foundry/foundry-models/how-to/deploy-foundry-models) |

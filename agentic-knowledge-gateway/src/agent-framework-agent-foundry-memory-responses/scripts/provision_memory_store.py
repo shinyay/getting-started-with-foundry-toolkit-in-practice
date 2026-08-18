@@ -1,4 +1,4 @@
-"""Create and verify the tutorial Foundry Memory Store."""
+"""Create and verify the tutorial memory store."""
 
 import asyncio
 

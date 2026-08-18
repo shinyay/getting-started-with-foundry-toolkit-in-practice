@@ -12,7 +12,7 @@ applyTo: "agentic-knowledge-gateway/**"
   runtime variables always win.
 - Use Microsoft Entra ID through `DefaultAzureCredential`. Never add API keys,
   access tokens, credentials, or connection strings to source or examples.
-- Treat Foundry Memory and incoming A2A as preview capabilities.
+- Treat Agent Service Memory and incoming A2A as preview capabilities.
 - The tutorial uses one fixed `MEMORY_SCOPE`. It is shared test state, not
   per-user isolation or an authorization boundary.
 - Store only synthetic, non-sensitive tutorial facts. Never use production

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write deterministic fictional knowledge directly into Foundry Memory."""
+"""Write deterministic fictional knowledge into the memory store."""
 
 from __future__ import annotations
 

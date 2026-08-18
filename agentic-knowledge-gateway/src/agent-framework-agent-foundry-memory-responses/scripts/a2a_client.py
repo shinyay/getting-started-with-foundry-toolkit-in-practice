@@ -142,7 +142,7 @@ async def prove_remembered_pair(
             raise
         raise RuntimeError(
             "A2A neither restated this run's exact synthetic pair nor "
-            "persisted it to Foundry Memory, so the Gateway did not complete "
+            "persisted it to the memory store, so the Gateway did not complete "
             "its strict write-through tool call."
         ) from error
 
@@ -214,8 +214,7 @@ async def run() -> None:
                         acknowledgement,
                     )
                     print(
-                        "Verified this run's exact pair in one Foundry "
-                        "Memory item."
+                        "Verified this run's exact pair in one memory item."
                     )
                     for content in contents:
                         print(f"- {content}")

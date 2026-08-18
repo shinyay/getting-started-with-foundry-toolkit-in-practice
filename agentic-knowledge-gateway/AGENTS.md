@@ -1,7 +1,7 @@
 # Agentic Knowledge Gateway coding instructions
 
 This project is a Microsoft Foundry Hosted Agent built with Python, Microsoft
-Agent Framework, Responses 2.0, Foundry Memory, and incoming A2A v1.0.
+Agent Framework, Responses 2.0, Agent Service Memory, and incoming A2A v1.0.
 
 ## Architecture invariants
 

@@ -148,7 +148,7 @@ async def wait_for_memory_proof(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError(
-                "Foundry Memory did not return this run's exact key/value "
+                "The memory store did not return this run's exact key/value "
                 f"pair within {timeout:g} seconds: {proof.pair}"
             )
         contents = await list_memory_contents_with_retry(
@@ -163,7 +163,7 @@ async def wait_for_memory_proof(
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise TimeoutError(
-                "Foundry Memory did not return this run's exact key/value "
+                "The memory store did not return this run's exact key/value "
                 f"pair within {timeout:g} seconds: {proof.pair}"
             )
         await asyncio.sleep(min(poll_interval, remaining))

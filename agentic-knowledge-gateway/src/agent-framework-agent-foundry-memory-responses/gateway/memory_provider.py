@@ -1,4 +1,4 @@
-"""Foundry Memory provider behavior for deterministic tutorial proofs."""
+"""Memory provider behavior for deterministic tutorial proofs."""
 
 from __future__ import annotations
 
