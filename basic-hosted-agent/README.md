@@ -121,14 +121,19 @@ the Hosted Agent runtime. No model key is stored in source code.
 ```python
 agent = Agent(
     client=client,
-    instructions="あなたは日本語で簡潔かつ正確に回答し、不明なことを推測しないアシスタントです。",
+    instructions=AGENT_INSTRUCTIONS,
     default_options={"store": False},
 )
 ```
 
-The Japanese instructions are an intentionally visible customization. Replace
-them with the role, behavior, boundaries, and output format required by your
-application.
+`AGENT_INSTRUCTIONS` asks the agent to answer in two stages: one or two hints
+that help the reader reason toward the answer, a `---` separator, and then the
+precise answer. It also tells the agent to say it does not know rather than
+guess.
+
+This behavior is an intentionally visible customization, and it is the only
+change that alters what the agent says. Replace it with the role, behavior,
+boundaries, and output format required by your application.
 
 ### 5. Expose the Responses server
 
@@ -274,8 +279,11 @@ Make only these changes:
 1. In src/agent-framework-agent-basic-responses/main.py:
    - use load_dotenv(override=False);
    - type main as -> None;
-   - make the agent answer briefly and accurately in Japanese and avoid
-     guessing;
+   - rewrite the Agent instructions so the agent first gives one or two hints
+     that help the reader reason toward the answer without revealing it, then a
+     line containing only ---, then the precise answer; it must reply in
+     Japanese, say it does not know rather than guess, and never withhold the
+     answer after the hints;
    - preserve ResponsesHostServer, DefaultAzureCredential, store=False,
      environment variable names, and port behavior.
 2. Ensure the root .gitignore excludes .venv/, __pycache__/, *.py[cod], .env,

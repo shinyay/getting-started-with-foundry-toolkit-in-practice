@@ -41,7 +41,8 @@ You will create a small conversational agent that:
 - exposes the OpenAI-compatible Responses protocol through
   `ResponsesHostServer`;
 - authenticates to Microsoft Foundry with Microsoft Entra ID;
-- responds in concise Japanese as a visible customization example;
+- responds in Japanese with one or two hints, a separator, and then the answer,
+  as a visible customization example;
 - supports a multi-turn conversation;
 - runs locally on port `8088`;
 - deploys from source code with Remote dependency resolution; and
@@ -468,7 +469,7 @@ def main() -> None:
     ...
     agent = Agent(
         client=client,
-        instructions="あなたは日本語で簡潔かつ正確に回答し、不明なことを推測しないアシスタントです。",
+        instructions=AGENT_INSTRUCTIONS,
         default_options={"store": False},
     )
 ```
@@ -678,22 +679,31 @@ page, press `Ctrl+J` to hide it. The input is at the lower left and displays
 ### Single-turn smoke test
 
 ```text
-Explain the difference between Microsoft Agent Framework and a Hosted Agent in
-exactly two sentences, in Japanese.
+二分探索の計算量はどれくらいですか。
 ```
 
-Expected outcome: a concise Japanese answer.
+Expected outcome: one or two hints, a `---` separator, and then `O(log n)` with
+a short reason. The hints appear first because of the customized instructions.
 
 ### Multi-turn smoke test
 
 Without clearing the conversation, send:
 
 ```text
-Rewrite that explanation as a restaurant analogy in one sentence.
+それを一言でまとめてください。
 ```
 
-Expected outcome: the second response uses the previous explanation. This
+Expected outcome: the second response builds on the previous answer. This
 confirms that the Responses conversation context is working.
+
+### Abstention smoke test
+
+```text
+Project Shinya の本番デプロイ枠を教えてください。
+```
+
+Expected outcome: the agent states that it does not know rather than inventing
+a schedule. This agent has no knowledge store of its own.
 
 Inspect **Input & Output** and **Events** to understand the request lifecycle.
 
