@@ -3,7 +3,7 @@
 
 The chat agent holds no knowledge of its own. It reaches the Agentic Knowledge
 Gateway through an incoming A2A v1.0 connection, so every factual answer has to
-come from Foundry Memory behind the Gateway.
+come from the memory store behind the Gateway.
 
 The Foundry Toolkit user interface currently hides A2A connections from the
 Prompt Agent tool picker, so this script configures the agent through the

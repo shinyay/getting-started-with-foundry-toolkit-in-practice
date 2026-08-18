@@ -1,10 +1,10 @@
 # Agentic Knowledge Gateway デモ実施手順
 
-Foundry Memory にだけ存在する組織固有の知識を、Chat Agent が A2A 経由で
-Knowledge Gateway に問い合わせて回答する様子を実演するための手順書です。
+Foundry Agent Service の Memory にだけ存在する組織固有の知識を、Chat Agent が
+A2A 経由で Knowledge Gateway に問い合わせて回答する様子を実演するための手順書です。
 
 > [!NOTE]
-> この手順は 2026 年 8 月 18 日に East US 2 で検証しました。Foundry Memory、
+> この手順は 2026 年 8 月 18 日に East US 2 で検証しました。Agent Service の Memory、
 > Hosted Agent、incoming A2A、Prompt Agent の A2A ツールはいずれもプレビュー
 > 機能です。UI のラベルや API の形は変わる可能性があります。
 
@@ -28,7 +28,7 @@ Knowledge Gateway に問い合わせて回答する様子を実演するため�
 flowchart LR
     U[発表者] -->|Responses 2.0| C[Chat Agent<br/>Prompt Agent]
     C -->|A2A v1.0<br/>Agentic Identity| G[Knowledge Gateway<br/>Hosted Agent]
-    G -->|semantic search| M[(Foundry Memory Store)]
+    G -->|semantic search| M[(memory store)]
     G --> L[chat model]
 ```
 
@@ -37,7 +37,7 @@ flowchart LR
 | Chat Agent | Prompt Agent | 対話窓口。この架空チームに関する知識を持たず、該当する質問を Gateway に委譲する |
 | A2A 接続 | RemoteA2A Connection | Chat Agent から Gateway への接続。Agentic Identity で認証 |
 | Knowledge Gateway | Hosted Agent | 知識ゲートウェイ本体。Responses 2.0 と incoming A2A v1.0 を公開 |
-| Memory Store | Foundry Memory | 長期記憶。既定 TTL は 7 日 |
+| Memory store | Agent Service Memory | 長期記憶。既定 TTL は 7 日 |
 | チャットモデル | Model Deployment | 両 Agent の推論 |
 | 埋め込みモデル | Model Deployment | Memory の意味検索 |
 
@@ -258,7 +258,7 @@ Instructions 欄が空欄で表示された場合は 8.2 を参照してくだ�
 
 > この Agent はこのチームに関する知識を一切持っていません。プロジェクトや決定
 > 事項を尋ねると、A2A プロトコルで別の Agent、Knowledge Gateway に転送します。
-> Gateway だけが Foundry Memory にアクセスできます。
+> Gateway だけが Agent Service の Memory にアクセスできます。
 
 ### 6.3 質問と想定される回答
 

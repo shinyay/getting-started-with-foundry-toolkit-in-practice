@@ -1,0 +1,5 @@
+# Keep line endings stable regardless of the editor or platform that writes a
+# file. Several files entered this repository with CRLF because they were
+# authored from a Windows host against a WSL checkout, which produced diffs
+# where every line appeared changed.
+* text=auto eol=lf
