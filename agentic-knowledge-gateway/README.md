@@ -241,6 +241,11 @@ git diff 910302d -- agentic-knowledge-gateway
 Use Copilot Agent mode, but give it a narrow change contract. Review each
 milestone separately rather than requesting the entire Gateway in one prompt.
 
+> [!TIP]
+> [`PROMPTS.md`](PROMPTS.md) carries the same three prompts in Japanese, with
+> the reasoning behind each constraint and the review checklist expanded. Use
+> it when you want to adapt these prompts rather than copy them.
+
 ### Prompt 1: establish guardrails
 
 ```text
@@ -335,6 +340,7 @@ Reject a diff that:
 
 Path-specific Copilot instructions are in
 [`../.github/instructions/agentic-knowledge-gateway.instructions.md`](../.github/instructions/agentic-knowledge-gateway.instructions.md).
+[`PROMPTS.md`](PROMPTS.md) explains why each item on this checklist matters.
 
 ## 3. Understand the Customized Project
 

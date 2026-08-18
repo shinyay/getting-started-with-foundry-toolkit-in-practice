@@ -33,6 +33,15 @@ Tutorial 2 builds directly on the hosting, identity, debugging, and deployment
 concepts introduced here. Complete Tutorial 1 first if Foundry Toolkit,
 Agent Framework, or Hosted Agents are new to you.
 
+### Companion documents
+
+These sit alongside Tutorial 2 and are written in Japanese.
+
+| Document | Read it when |
+|---|---|
+| [`agentic-knowledge-gateway/PROMPTS.md`](agentic-knowledge-gateway/PROMPTS.md) | You want to adapt the GitHub Copilot prompts rather than copy them, and need the reasoning behind each constraint. |
+| [`agentic-knowledge-gateway/DEMO.md`](agentic-knowledge-gateway/DEMO.md) | You want to demonstrate agent-to-agent memory recall to an audience. |
+
 ## What You Will Build
 
 You will create a small conversational agent that:
