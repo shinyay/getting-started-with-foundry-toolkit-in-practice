@@ -50,8 +50,9 @@ events. The hosting layer manages conversation history, so the agent sets
 basic-hosted-agent/
 ├── .azure/                         # Ignored local azd environment state
 ├── .foundry/
-│   ├── .deployment.json            # Foundry Toolkit workspace state
-│   ├── agent-metadata.yaml         # Project and Agent mapping by environment
+│   ├── .deployment.json            # Ignored Foundry Toolkit workspace state
+│   ├── agent-metadata.example.yaml # Tracked environment-neutral template
+│   ├── agent-metadata.yaml         # Ignored Project and Agent mapping
 │   ├── datasets/                   # Evaluation dataset cache
 │   ├── evaluators/                 # Evaluation definition cache
 │   └── results/                    # Local evaluation results
@@ -332,11 +333,24 @@ The deployment manifest has two service concepts.
 ```yaml
 ai-project:
   host: azure.ai.project
-  endpoint: <foundry-project-endpoint>
+  endpoint: ${FOUNDRY_PROJECT_ENDPOINT}
 ```
 
-When reusing an existing Project and model, keep the endpoint and omit a
-`deployments:` block. This avoids declaring a second model deployment.
+When reusing an existing Project and model, reference the endpoint through the
+`azd` environment and omit a `deployments:` block. This avoids declaring a
+second model deployment, and it keeps an environment-specific endpoint out of
+the tracked manifest.
+
+Set the value once per environment:
+
+```bash
+azd env set FOUNDRY_PROJECT_ENDPOINT "https://<account>.services.ai.azure.com/api/projects/<project>"
+azd env set AZURE_AI_PROJECT_ID "<foundry-project-resource-id>"
+```
+
+`azd deploy` also requires `AZURE_AI_PROJECT_ID` when the Project is not
+provisioned by this manifest. Read both values from the Project that already
+hosts your model deployment.
 
 ### Hosted Agent source package
 
@@ -458,6 +472,11 @@ environments:
     testCases: []
 ```
 
+That file and `.foundry/.deployment.json` hold environment-specific endpoints
+and identifiers, so both are ignored by Git. `agent-metadata.example.yaml` is
+tracked as the environment-neutral template; copy it and fill in your own
+values.
+
 No `azureContainerRegistry` is needed for Code-package deployment. The cache
 folders support future evaluation datasets, evaluator definitions, and result
 comparisons.
@@ -488,6 +507,8 @@ comparisons.
 | Deployment remains provisioning | Inspect Toolkit output and the Agent version logs; Remote dependency installation can take several minutes. |
 | Toolkit cannot list account keys because local auth is disabled | Expected when Entra ID is required; it is not a deployment failure. |
 | Hosted invocation returns 403 | Verify user and Hosted Agent identity roles on the Foundry resource. |
+| `azd deploy` reports `AZURE_AI_PROJECT_ID is not set` | The manifest reuses an existing Project. Run `azd env set AZURE_AI_PROJECT_ID <project-resource-id>`. |
+| `doctor` cannot resolve the Project endpoint | Run `azd env set FOUNDRY_PROJECT_ENDPOINT <endpoint>` for the selected environment. |
 
 ## Cleanup
 

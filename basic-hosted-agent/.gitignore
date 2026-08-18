@@ -5,3 +5,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .azure/
+
+# Foundry Toolkit writes environment-specific endpoints and IDs into these.
+.foundry/agent-metadata.yaml
+!.foundry/agent-metadata.example.yaml
+.foundry/.deployment.json
+.foundry/results/*
+!.foundry/results/.gitkeep

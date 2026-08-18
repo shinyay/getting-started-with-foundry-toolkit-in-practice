@@ -7,7 +7,7 @@ name: agent-framework-agent-basic-responses
 services:
   ai-project:
     host: azure.ai.project
-    endpoint: https://ais-gswaf-eastus-vfunyual.services.ai.azure.com/api/projects/proj-gswaf-eastus
+    endpoint: ${FOUNDRY_PROJECT_ENDPOINT}
   foundry-basic-ja-agent:
     host: azure.ai.agent
     metadata:

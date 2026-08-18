@@ -1,6 +1,0 @@
-defaultEnvironment: dev
-environments:
-  dev:
-    projectEndpoint: https://ais-gswaf-eastus-vfunyual.services.ai.azure.com/api/projects/proj-gswaf-eastus
-    agentName: foundry-basic-ja-agent
-    testCases: []
